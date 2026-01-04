@@ -1,0 +1,44 @@
+use verseguy_storage::RocksDBStorage;
+use verseguy_compliance::{export_user_data, delete_user_data};
+use verseguy_auth::{User, AuthMethod, License};
+use tempfile::tempdir;
+
+#[test]
+fn export_and_delete_user_data() {
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().to_str().unwrap().to_string();
+    let storage = RocksDBStorage::open(&db_path).unwrap();
+
+    // Insert a user
+    let user = User {
+        id: "u1".to_string(),
+        username: "tester".to_string(),
+        auth_method: AuthMethod::Local { username: "tester".to_string(), password_hash: "h".to_string() },
+        license: License::Free,
+        created_at: chrono::Utc::now(),
+    };
+    storage.put(format!("user:id:{}", user.id).as_bytes(), &user).unwrap();
+    storage.put(format!("user:username:{}", user.username).as_bytes(), &user).unwrap();
+
+    // Insert a session
+    let rec = verseguy_auth::session::SessionRecord {
+        sid: "s1".to_string(),
+        user_id: user.id.clone(),
+        license: "Free".to_string(),
+        created_at: chrono::Utc::now().timestamp(),
+        expires_at: chrono::Utc::now().timestamp() + 3600,
+    };
+    storage.put(format!("session:{}", rec.sid).as_bytes(), &rec).unwrap();
+
+    // Export
+    let out = export_user_data(&storage, &user.id).unwrap();
+    assert!(out.contains("tester"));
+
+    // Delete
+    let ok = delete_user_data(&storage, &user.id).unwrap();
+    assert!(ok);
+
+    // Ensure deleted
+    let u_opt: Option<User> = storage.get(format!("user:id:{}", user.id).as_bytes()).unwrap();
+    assert!(u_opt.is_none());
+}
