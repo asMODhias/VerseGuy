@@ -1,0 +1,42 @@
+name: Security Scan
+
+# Manual security scan workflow skeleton.
+# This workflow is a manual (workflow_dispatch) skeleton to allow running security scans on demand.
+# Expand with tools (trivy/snyk/cargo-audit/npm audit) and secrets as needed.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  security-scan:
+    name: Run Security Scans (manual)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install cargo-audit
+        run: |
+          cargo install cargo-audit --force || true
+
+      - name: Run cargo-audit
+        run: |
+          cargo audit || true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: NPM audit (web)
+        run: |
+          cd ui/web && npm ci && npm audit --audit-level=moderate || true
+
+      - name: Summary
+        run: |
+          echo "Security scan finished. Review logs and adjust steps to install and run desired scanning tools."

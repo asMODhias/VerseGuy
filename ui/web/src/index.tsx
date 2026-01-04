@@ -1,9 +1,12 @@
-import React from 'react';
-import { createRoot } from 'react-dom/client';
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App'
+import './index.css'
 
-const App = () => <div>Hello VerseguY (web)</div>;
+const rootEl = document.getElementById('root') ?? document.createElement('div')
+if (!rootEl.id) {
+  rootEl.id = 'root'
+  document.body.appendChild(rootEl)
+}
 
-const root = document.createElement('div');
-root.id = 'root';
-document.body.appendChild(root);
-createRoot(root).render(<App />);
+createRoot(rootEl).render(<App />)

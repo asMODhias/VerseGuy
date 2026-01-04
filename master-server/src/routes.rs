@@ -305,6 +305,24 @@ pub async fn plugins_publish_handler(
     State(state): State<Arc<AppState>>,
     req: axum::http::Request<axum::body::Body>,
 ) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), (axum::http::StatusCode, String)> {
+    // If request contains x-user-id, ensure that user accepted latest ToS
+    if let Some(uid_hdr) = req.headers().get("x-user-id") {
+        if let Ok(uid) = uid_hdr.to_str() {
+            let accepted = crate::legal::user_has_accepted_latest(&state, uid).map_err(|e| {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("tos check failed: {}", e),
+                )
+            })?;
+            if !accepted {
+                return Err((
+                    axum::http::StatusCode::FORBIDDEN,
+                    "user must accept latest ToS".to_string(),
+                ));
+            }
+        }
+    }
+
     // Simple publisher auth: if MASTER_PLUGIN_PUBLISH_KEY is set, require X-Plugin-Token header to match
     if let Ok(key) = std::env::var("MASTER_PLUGIN_PUBLISH_KEY") {
         let header_token = req
@@ -418,4 +436,58 @@ pub async fn revocations_list_handler(
         .prefix_scan(b"plugin_revoked:")
         .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
     Ok(Json(serde_json::json!({"revocations": items})))
+}
+
+// GET /audit/export/{user_id}
+pub async fn audit_export_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(user_id): axum::extract::Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    // Use AuditService from containers/audit
+    let audit_service = verseguy_audit::AuditService::new(state.storage.clone());
+    let items = audit_service
+        .export_for_user(&user_id)
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"entries": items})))
+}
+
+// DELETE /users/{user_id}/data
+pub async fn user_data_delete_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(user_id): axum::extract::Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    // Delete ToS entries for user
+    let tos_prefix = format!("tos:{}:", user_id);
+    let mut deleted = 0usize;
+    match state.storage.prefix_delete(tos_prefix.as_bytes()) {
+        Ok(n) => deleted += n,
+        Err(e) => return Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("failed deleting tos: {}", e))),
+    }
+    // delete latest tos pointer
+    let latest_key = format!("tos:latest:{}", user_id);
+    if let Err(e) = state.storage.delete(latest_key.as_bytes()) {
+        // ignore not found, but return error on other errors
+        // RocksDB delete returns Ok even if missing, so just count
+        return Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("failed deleting tos latest: {}", e)));
+    }
+
+    // Delete audit entries by scanning all audits and deleting those matching user_id
+    let audit_items: Vec<verseguy_audit::AuditEntry> = match state.storage.prefix_scan(b"audit:") {
+        Ok(v) => v,
+        Err(e) => return Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("failed scanning audits: {}", e))),
+    };
+    let mut audit_deleted = 0usize;
+    for a in audit_items {
+        if a.user_id.as_deref() == Some(&user_id) {
+            let key = format!("audit:{}", a.id);
+            if let Err(e) = state.storage.delete(key.as_bytes()) {
+                return Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("failed deleting audit {}: {}", a.id, e)));
+            }
+            audit_deleted += 1;
+        }
+    }
+
+    deleted += audit_deleted;
+
+    Ok(Json(serde_json::json!({"ok": true, "deleted": deleted})))
 }

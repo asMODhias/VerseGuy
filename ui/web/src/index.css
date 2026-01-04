@@ -1,0 +1,32 @@
+:root {
+  --bg: #0a1628;
+  --accent: #00d9ff;
+  --muted: #99a3b2;
+  --surface: #071225;
+  --text: #e6eef6;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: linear-gradient(90deg, rgba(10,22,40,0.8), rgba(10,22,40,0.6));
+}
+
+main {
+  padding: 24px;
+}

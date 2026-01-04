@@ -35,7 +35,8 @@ async fn verify_and_revoke_flow() {
     let pub_b64 = general_purpose::STANDARD.encode(state.keypair.as_ref().unwrap().public.to_bytes());
 
     // POST /verify/plugin
-    let body = serde_json::json!({"manifest": manifest, "public_key_b64": pub_b64}).to_string();
+    // Use published manifest for verification (store_manifest signed the published manifest)
+    let body = serde_json::json!({"manifest": manifest.with_published(), "public_key_b64": pub_b64}).to_string();
     let req = Request::builder()
         .method("POST")
         .uri("/verify/plugin")

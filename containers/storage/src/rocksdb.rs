@@ -54,11 +54,26 @@ impl RocksDBStorage {
         Ok(results)
     }
 
+    /// Delete a single key
     pub fn delete<K>(&self, key: K) -> Result<()>
     where
         K: AsRef<[u8]>,
     {
         self.db.delete(key)?;
         Ok(())
+    }
+
+    /// Delete all entries whose key starts with the provided prefix
+    pub fn prefix_delete(&self, prefix: &[u8]) -> Result<usize> {
+        let mut removed = 0usize;
+        let iter = self.db.iterator(IteratorMode::Start);
+        for item in iter {
+            let (k, _) = item?;
+            if k.starts_with(prefix) {
+                self.db.delete(&k)?;
+                removed += 1;
+            }
+        }
+        Ok(removed)
     }
 }

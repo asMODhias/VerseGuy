@@ -13,7 +13,8 @@ Developer:
 
 - [Plugin Development](developer/PLUGIN_DEV.md)
 - [Container Development](developer/CONTAINER_DEV.md)
-- [API Reference (placeholder)](developer/API_REFERENCE.md)
+- [API Reference (placeholder, TODO)](developer/API_REFERENCE.md)  
+  - See `developer/API_REFERENCE.md` for validation and generation steps.
 
 User:
 

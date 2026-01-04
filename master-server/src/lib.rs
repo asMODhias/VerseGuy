@@ -7,6 +7,7 @@ use std::sync::Arc;
 pub mod plugins;
 pub mod routes;
 pub mod state;
+pub mod legal;
 
 use state::AppState;
 pub mod admin_cli;
@@ -24,10 +25,20 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .route("/admin/keys/rotate", post(routes::admin_rotate_key))
         .route("/admin/keys/import", post(routes::admin_import_key))
         .route("/auth/tos", post(routes::tos_accept_handler))
-        .route("/auth/tos/:user_id", get(routes::tos_get_handler))
+        .route("/auth/tos/{user_id}", get(routes::tos_get_handler))
         .route("/verify/plugin", post(routes::verify_plugin_handler))
         .route("/verify/revoke", post(routes::revoke_handler))
         .route("/verify/revocations", get(routes::revocations_list_handler))
+        // Legal / admin legal endpoints
+        .route("/admin/legal", post(legal::admin_create_legal_handler))
+        .route("/admin/legal/{id}", get(legal::admin_get_legal_handler))
+        .route("/admin/legal", get(legal::admin_list_legal_handler))
+        .route("/admin/legal/{id}/revoke", post(legal::admin_revoke_legal_handler))
+        .route("/legal/latest/{type}", get(legal::get_latest_legal_handler))
+        .route("/legal/{type}/{version}", get(legal::get_legal_version_handler))
+        // GDPR / Audit endpoints
+        .route("/audit/export/{user_id}", get(routes::audit_export_handler))
+        .route("/users/{user_id}/data", axum::routing::delete(routes::user_data_delete_handler))
         .with_state(state)
 }
 

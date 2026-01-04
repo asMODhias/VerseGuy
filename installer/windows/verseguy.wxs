@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="VerseguY" Language="1031" Version="0.1.0" Manufacturer="VerseGuy" UpgradeCode="PUT-GUID-HERE">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine"/>
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."/>
+
+    <MediaTemplate/>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLFOLDER" Name="VerseguY">
+          <Component Id="cmp_CoreDll" Guid="*">
+            <File Id="fil_CoreExe" Source="..\..\launcher\main.cpp" KeyPath="yes"/>
+          </Component>
+        </Directory>
+      </Directory>
+
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="VerseguYProgramMenu" Name="VerseguY">
+          <Component Id="cmp_Shortcut" Guid="*">
+            <Shortcut Id="VerseguYShortcut" Name="VerseguY" Description="Launch VerseguY" Target="[INSTALLFOLDER]\\VerseguY.exe" WorkingDirectory="INSTALLFOLDER"/>
+            <RemoveFolder Id="RemoveProgramMenu" Directory="VerseguYProgramMenu" On="uninstall"/>
+            <RegistryValue Root="HKCU" Key="Software\VerseguY" Name="installed" Type="integer" Value="1" KeyPath="no"/>
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <Feature Id="ProductFeature" Title="VerseguY" Level="1">
+      <ComponentRef Id="cmp_CoreDll"/>
+      <ComponentRef Id="cmp_Shortcut"/>
+    </Feature>
+
+  </Product>
+</Wix>
