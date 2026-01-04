@@ -11,11 +11,31 @@ How to run tests:
 - Unit tests: `cargo test -p verseguy_p2p`
 - Verbose libp2p debug test (ignored by default):
 
+  Unix / Linux / macOS:
+
+  ```bash
   RUST_LOG=debug RUST_BACKTRACE=1 cargo test -p verseguy_p2p -- --nocapture ping_between_two_peers_libp2p_debug_mpsc --ignored
+  ```
+
+  PowerShell (Windows):
+
+  ```powershell
+  $env:RUST_LOG="debug"; $env:RUST_BACKTRACE="1"; cargo test -p verseguy_p2p -- --nocapture ping_between_two_peers_libp2p_debug_mpsc --ignored
+  ```
 
 - mDNS discovery test (ignored by default):
 
+  Unix / Linux / macOS:
+
+  ```bash
   RUST_LOG=debug RUST_BACKTRACE=1 cargo test -p verseguy_p2p -- --nocapture ping_between_two_peers_mdns_discovery --ignored
+  ```
+
+  PowerShell (Windows):
+
+  ```powershell
+  $env:RUST_LOG="debug"; $env:RUST_BACKTRACE="1"; cargo test -p verseguy_p2p -- --nocapture ping_between_two_peers_mdns_discovery --ignored
+  ```
 
 Notes:
 - The libp2p integration is actively being stabilized; transient dial errors (AddrInUse) are retried automatically in tests.
