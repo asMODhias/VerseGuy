@@ -1,4 +1,4 @@
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use verseguy_licensing::validate_license;
 use verseguy_licensing::validator::create_signed_token;
 
