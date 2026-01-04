@@ -3,6 +3,7 @@
 This index summarizes canonical sections extracted from the main specifications (`VERSE_GUY_V2_ULTIMATE_SPECIFICATION.md` and `VERSEGUY_COPILOT_COMPLETE.md`). Use these files as quick references for implementation.
 
 Files:
+
 - `auth.md` — Authentication architecture, Local OAuth, Session management, and examples.
 - `plugin_api.md` — Plugin manifest format, C++ `IPlugin` header, capability model.
 - `storage.md` — RocksDB storage wrapper and notes for schema and backups.

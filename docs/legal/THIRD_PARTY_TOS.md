@@ -25,5 +25,6 @@ Examples (see specification for full details):
   - Attribution and allowed usage rules
 
 Implementation note:
+
 - Integrations must implement rate limiting, opt-in scopes, and respect each provider's ToS.
 - Violations must be flagged by compliance modules and can trigger revocation of integration access.

@@ -1,9 +1,11 @@
 # Storage — RocksDB (Extract)
 
 ## RocksDB Wrapper (Canonical)
+
 Use RocksDB as the local persistent store for users, sessions, plugins, audit logs, and plugin data.
 
 Key implementation points:
+
 - Use RocksDB Options: create_if_missing=true.
 - Serialize values as JSON (serde) for schema evolution.
 - Provide typed put/get helpers with generic Serialize/Deserialize.
@@ -28,6 +30,7 @@ impl RocksDBStorage {
 ```
 
 Backup & Encryption:
+
 - Encrypted at rest (AES-256) per spec.
 - Exports for GDPR use prefix scanning and filtering.
 

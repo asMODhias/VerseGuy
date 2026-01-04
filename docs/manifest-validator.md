@@ -10,6 +10,7 @@ Usage:
 - Shell wrapper: `scripts/validate-manifests.sh [<pattern> ...]`
 
 Checks performed:
+
 - `[plugin]` section present
   - `id`, `name`, `version` present and non-empty
   - `core_version_min`, `sdk_version` present

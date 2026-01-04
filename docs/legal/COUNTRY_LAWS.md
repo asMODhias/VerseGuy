@@ -11,6 +11,7 @@ Key countries and notes:
 - BR: LGPD considerations similar to GDPR.
 
 Implementation guidance:
+
 - Maintain per-country handlers under `legal/CountrySpecific/` and reference them in compliance workflows.
 - Ensure retention and export rules are configurable per country.
 - Legal team must supply final texts for each country file.
