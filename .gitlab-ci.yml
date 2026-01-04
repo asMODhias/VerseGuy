@@ -60,3 +60,13 @@ mdns_smoke:
     - RUST_LOG=debug RUST_BACKTRACE=1 cargo test -p verseguy_p2p -- --nocapture ping_between_two_peers_mdns_discovery --ignored
   when: manual
   allow_failure: true
+
+mdns_stress:
+  image: rust:latest
+  stage: smoke
+  script:
+    - echo "Starting mdns stress runs (manual, allow_failure)"
+    - for i in $(seq 1 50); do echo "run $i"; RUST_LOG=debug RUST_BACKTRACE=1 cargo test -p verseguy_p2p -- --nocapture ping_between_two_peers_mdns_discovery --ignored || exit 1; done
+  when: manual
+  allow_failure: true
+  timeout: 30m
