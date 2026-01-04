@@ -1,0 +1,52 @@
+[plugin]
+id = "org.verseguy.organization"
+name = "Organization Management"
+version = "2.0.0"
+author = "Verse Guy Team"
+description = "Complete organization management system"
+license_required = "Free"
+core_version_min = "2.0.0"
+sdk_version = "1.0.0"
+
+[capabilities]
+required = [
+    "storage:read",
+    "storage:write",
+    "ui:panel",
+    "network:p2p",
+]
+
+optional = [
+    "network:master_server",
+    "notifications:system",
+]
+
+[subplugins.members]
+name = "Member Management"
+enabled_by_default = true
+license_required = "Free"
+
+[subplugins.ranks]
+name = "Rank System"
+enabled_by_default = true
+license_required = "Free"
+
+[subplugins.recruitment]
+name = "Recruitment System"
+enabled_by_default = false
+license_required = "Pro"
+
+[subplugins.analytics]
+name = "Organization Analytics"
+enabled_by_default = false
+license_required = "Pro"
+
+[subplugins.rbac]
+name = "Role-Based Access Control"
+enabled_by_default = false
+license_required = "Enterprise"
+
+[subplugins.multi_org]
+name = "Multi-Organization Support"
+enabled_by_default = false
+license_required = "Enterprise"

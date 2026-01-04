@@ -1,7 +1,106 @@
 pub mod types;
 
+use std::ffi::CString;
+use std::os::raw::{c_char, c_void};
+
 pub fn example() -> String {
     "organization plugin loaded".to_string()
+}
+
+// Simple Rust representation of the C IPlugin interface
+#[repr(C)]
+pub struct IPlugin {
+    pub get_id: Option<extern "C" fn(*mut c_void) -> *const c_char>,
+    pub get_name: Option<extern "C" fn(*mut c_void) -> *const c_char>,
+    pub get_version: Option<extern "C" fn(*mut c_void) -> *const c_char>,
+    pub get_required_capabilities: Option<extern "C" fn(*mut c_void) -> u64>,
+    pub initialize: Option<extern "C" fn(*mut c_void, *mut c_void) -> bool>,
+    pub shutdown: Option<extern "C" fn(*mut c_void)>,
+    pub instance: *mut c_void,
+}
+
+pub struct OrganizationPlugin {
+    id: CString,
+    name: CString,
+    version: CString,
+    host: *mut c_void,
+}
+
+impl OrganizationPlugin {
+    pub fn new() -> Self {
+        Self {
+            id: CString::new("org.verseguy.organization").unwrap(),
+            name: CString::new("Organization Management").unwrap(),
+            version: CString::new("2.0.0").unwrap(),
+            host: std::ptr::null_mut(),
+        }
+    }
+}
+
+impl Default for OrganizationPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+extern "C" fn get_id_impl(instance: *mut c_void) -> *const c_char {
+    if instance.is_null() {
+        return std::ptr::null();
+    }
+    let plugin = unsafe { &*(instance as *mut OrganizationPlugin) };
+    plugin.id.as_ptr()
+}
+
+extern "C" fn get_name_impl(instance: *mut c_void) -> *const c_char {
+    if instance.is_null() {
+        return std::ptr::null();
+    }
+    let plugin = unsafe { &*(instance as *mut OrganizationPlugin) };
+    plugin.name.as_ptr()
+}
+
+extern "C" fn get_version_impl(instance: *mut c_void) -> *const c_char {
+    if instance.is_null() {
+        return std::ptr::null();
+    }
+    let plugin = unsafe { &*(instance as *mut OrganizationPlugin) };
+    plugin.version.as_ptr()
+}
+
+extern "C" fn get_required_capabilities_impl(_instance: *mut c_void) -> u64 {
+    // example: requires storage read/write and UI panel
+    (1u64 << 0) | (1u64 << 1) | (1u64 << 4)
+}
+
+extern "C" fn initialize_impl(instance: *mut c_void, _host: *mut c_void) -> bool {
+    if instance.is_null() {
+        return false;
+    }
+    let plugin = unsafe { &mut *(instance as *mut OrganizationPlugin) };
+    plugin.host = _host;
+    true
+}
+
+extern "C" fn shutdown_impl(_instance: *mut c_void) {
+    // no-op for now
+}
+
+#[no_mangle]
+pub extern "C" fn PluginInit() -> *mut IPlugin {
+    let plugin = Box::new(OrganizationPlugin::new());
+    let instance_ptr = Box::into_raw(plugin) as *mut c_void;
+
+    let interface = Box::new(IPlugin {
+        get_id: Some(get_id_impl),
+        get_name: Some(get_name_impl),
+        get_version: Some(get_version_impl),
+        get_required_capabilities: Some(get_required_capabilities_impl),
+        initialize: Some(initialize_impl),
+        shutdown: Some(shutdown_impl),
+        instance: instance_ptr,
+    });
+
+    Box::into_raw(interface)
 }
 
 #[cfg(test)]
