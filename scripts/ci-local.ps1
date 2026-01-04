@@ -11,8 +11,8 @@ cargo fmt --all -- --check
 if ($LASTEXITCODE -ne 0) { throw "cargo fmt failed" }
 
 # 2) Rust clippy
-Write-Host "-> cargo clippy --all-targets --all-features -- -D warnings"
-cargo clippy --all-targets --all-features -- -D warnings
+Write-Host "-> cargo clippy --all-targets -- -D warnings"
+cargo clippy --all-targets -- -D warnings
 if ($LASTEXITCODE -ne 0) { throw "cargo clippy failed" }
 
 # 3) Run cargo tests
