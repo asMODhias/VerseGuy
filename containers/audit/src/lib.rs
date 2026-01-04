@@ -10,6 +10,7 @@ use verseguy_storage::RocksDBStorage;
 pub struct AuditEntry {
     pub id: String,
     pub prev_hash: Option<String>,
+    pub seq: i64,
     pub timestamp: i64,
     pub user_id: Option<String>,
     pub event: String,
@@ -26,14 +27,11 @@ impl AuditService {
     }
 
     pub fn log_event(&self, user_id: Option<String>, event: String) -> Result<AuditEntry> {
-        // scan for last audit entry using deterministic ordering (timestamp, id)
-        let mut prev_hash: Option<String> = None;
-        let mut items: Vec<AuditEntry> = self.db.prefix_scan(b"audit:")?;
-        // sort by timestamp then id to have deterministic order and pick the last as previous
-        items.sort_by(|a, b| (a.timestamp, a.id.as_str()).cmp(&(b.timestamp, b.id.as_str())));
-        if let Some(last) = items.last() {
-            prev_hash = Some(last.hash.clone());
-        }
+        // Read last hash and seq to maintain strict insertion order even when timestamps collide
+        // use audit-meta keys to avoid colliding with audit entries during prefix scans
+        let prev_hash: Option<String> = self.db.get(b"audit_meta:last_hash")?;
+        let last_seq_opt: Option<i64> = self.db.get(b"audit_meta:last_seq")?;
+        let seq = last_seq_opt.map(|s| s + 1).unwrap_or(1);
 
         let id = Uuid::new_v4().to_string();
         // use millisecond resolution to reduce chance of identical timestamps
@@ -53,7 +51,8 @@ impl AuditService {
 
         let entry = AuditEntry {
             id: id.clone(),
-            prev_hash,
+            prev_hash: prev_hash.clone(),
+            seq,
             timestamp,
             user_id,
             event,
@@ -62,15 +61,18 @@ impl AuditService {
 
         let key = format!("audit:{}", id);
         self.db.put(key.as_bytes(), &entry)?;
+        // update last pointers
+        self.db.put(b"audit_meta:last_hash", &entry.hash)?;
+        self.db.put(b"audit_meta:last_seq", &seq)?;
 
         Ok(entry)
     }
 
     pub fn verify(&self) -> Result<bool> {
-        // Verify chain integrity by recomputing hashes in chronological order
+        // Verify chain integrity by recomputing hashes in insertion order (seq)
         let mut items: Vec<AuditEntry> = self.db.prefix_scan(b"audit:")?;
-        // deterministic sort by timestamp then id
-        items.sort_by(|a, b| (a.timestamp, a.id.as_str()).cmp(&(b.timestamp, b.id.as_str())));
+        // deterministic sort by seq
+        items.sort_by(|a, b| a.seq.cmp(&b.seq));
         let mut prev_hash: Option<String> = None;
         for it in items {
             // recompute hash
@@ -95,8 +97,8 @@ impl AuditService {
     pub fn export_for_user(&self, user_id: &str) -> Result<Vec<AuditEntry>> {
         let mut items: Vec<AuditEntry> = self.db.prefix_scan(b"audit:")?;
         items.retain(|e| e.user_id.as_deref() == Some(user_id));
-        // sort deterministically by timestamp then id
-        items.sort_by(|a, b| (a.timestamp, a.id.as_str()).cmp(&(b.timestamp, b.id.as_str())));
+        // sort deterministically by seq (insertion order)
+        items.sort_by(|a, b| a.seq.cmp(&b.seq));
         Ok(items)
     }
 }
