@@ -1,6 +1,6 @@
 use anyhow::Result;
-use rocksdb::{IteratorMode, Options, DB};
-use serde::{de::DeserializeOwned, Serialize};
+use rocksdb::{DB, IteratorMode, Options};
+use serde::{Serialize, de::DeserializeOwned};
 use std::path::Path;
 use std::sync::Arc;
 
