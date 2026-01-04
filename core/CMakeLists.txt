@@ -35,3 +35,11 @@ endif()
 set_target_properties(test_plugin_verify PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_test(NAME test_plugin_verify COMMAND $<TARGET_FILE:test_plugin_verify>)
 
+# WASM sandbox smoke test (runs the Rust wasm-runner binary via cargo)
+add_executable(test_wasm_runner tests/test_wasm_runner.cpp)
+if (WIN32)
+    target_compile_definitions(test_wasm_runner PRIVATE -D_WIN32_WINNT=0x0A00)
+endif()
+set_target_properties(test_wasm_runner PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+add_test(NAME wasm_sandbox_smoke COMMAND $<TARGET_FILE:test_wasm_runner>)
+
