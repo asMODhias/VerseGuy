@@ -1,0 +1,32 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ui", "ui", "{FA674B5A-3394-926C-2B1E-70E5B00E4A5C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "native", "native", "{BA262C19-5159-FC18-FD8E-3FFBB9FE47A1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VerseguY.UI", "ui\native\VerseguY.UI\VerseguY.UI.csproj", "{28A950E5-1152-6664-C6C4-97C855D689DF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{28A950E5-1152-6664-C6C4-97C855D689DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{28A950E5-1152-6664-C6C4-97C855D689DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{28A950E5-1152-6664-C6C4-97C855D689DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{28A950E5-1152-6664-C6C4-97C855D689DF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{BA262C19-5159-FC18-FD8E-3FFBB9FE47A1} = {FA674B5A-3394-926C-2B1E-70E5B00E4A5C}
+		{28A950E5-1152-6664-C6C4-97C855D689DF} = {BA262C19-5159-FC18-FD8E-3FFBB9FE47A1}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E85E5C89-4AA2-42E6-A6F6-E91A80771F1D}
+	EndGlobalSection
+EndGlobal

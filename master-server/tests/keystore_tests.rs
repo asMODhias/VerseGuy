@@ -1,6 +1,5 @@
-use std::path::PathBuf;
-use tempfile::tempdir;
 use master_server::keystore;
+use tempfile::tempdir;
 
 #[test]
 fn key_persistence_roundtrip() {

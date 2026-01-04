@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "dgSpecHash": "WgXCaRPlz54=",
+  "success": true,
+  "projectFilePath": "D:\\Data\\Star Citizen\\Tools\\VerseGuy\\ui\\native\\VerseguY.UI\\VerseguY.UI.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\brotz\\.nuget\\packages\\microsoft.windows.sdk.buildtools\\10.0.22621.1\\microsoft.windows.sdk.buildtools.10.0.22621.1.nupkg.sha512",
+    "C:\\Users\\brotz\\.nuget\\packages\\microsoft.windowsappsdk\\1.4.230822000\\microsoft.windowsappsdk.1.4.230822000.nupkg.sha512",
+    "C:\\Users\\brotz\\.nuget\\packages\\microsoft.windows.sdk.net.ref\\10.0.22621.56\\microsoft.windows.sdk.net.ref.10.0.22621.56.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "VerseguY.UI depends on Microsoft.WindowsAppSDK (>= 1.4.3) but Microsoft.WindowsAppSDK 1.4.3 was not found. An approximate best match of Microsoft.WindowsAppSDK 1.4.230822000 was resolved.",
+      "libraryId": "Microsoft.WindowsAppSDK",
+      "targetGraphs": [
+        "net8.0-windows10.0.22621"
+      ]
+    }
+  ]
+}

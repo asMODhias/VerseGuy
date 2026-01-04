@@ -1,11 +1,11 @@
-use std::sync::Arc;
 use axum::body::Body;
-use axum::http::{Request, Method};
-use master_server::state::AppState;
-use master_server::build_app;
-use tower::util::ServiceExt;
-use serde_json::json;
+use axum::http::{Method, Request};
 use base64::Engine;
+use master_server::build_app;
+use master_server::state::AppState;
+use serde_json::json;
+use std::sync::Arc;
+use tower::util::ServiceExt;
 
 #[tokio::test]
 async fn rotate_and_import_key() {
@@ -32,7 +32,9 @@ async fn rotate_and_import_key() {
     let resp = app.clone().oneshot(req).await.unwrap();
     let status = resp.status();
     eprintln!("rotate status: {}", status);
-    let bytes = axum::body::to_bytes(resp.into_body(), 1024*1024).await.unwrap();
+    let bytes = axum::body::to_bytes(resp.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
     eprintln!("rotate body: {}", std::str::from_utf8(&bytes).unwrap());
     assert!(status.is_success());
     let v: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
@@ -55,7 +57,9 @@ async fn rotate_and_import_key() {
     let resp = app.oneshot(req).await.unwrap();
     let status = resp.status();
     eprintln!("import status: {}", status);
-    let bytes = axum::body::to_bytes(resp.into_body(), 1024*1024).await.unwrap();
+    let bytes = axum::body::to_bytes(resp.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
     eprintln!("import body: {}", std::str::from_utf8(&bytes).unwrap());
     assert!(status.is_success());
     let v: serde_json::Value = serde_json::from_slice(&bytes).unwrap();

@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "containers/storage",
+    "containers/auth",
+    "containers/licensing",
+    "containers/compliance",
+    "containers/audit",
+    "containers/wasm_sandbox",
+    "master-server",
+]

@@ -1,5 +1,5 @@
-use verseguy_compliance::validate_tos_acceptance;
 use serde_json::json;
+use verseguy_compliance::validate_tos_acceptance;
 
 #[test]
 fn valid_tos() {

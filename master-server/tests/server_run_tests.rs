@@ -1,16 +1,12 @@
-use std::sync::Arc;
-use std::net::{SocketAddr, TcpListener};
-use tokio::task;
-use reqwest::Client;
-
-use master_server::state::AppState;
 use master_server::build_app;
-use hyper::Server;
+use master_server::state::AppState;
+use std::sync::Arc;
+use tempfile::tempdir;
 
 #[tokio::test]
 async fn starts_and_serves_plugins_search() {
     // create temp db path
-    let dir = tempfile::tempdir().unwrap();
+    let dir = tempdir().unwrap();
     let db_path = dir.path().to_str().unwrap().to_string();
     let secret = b"integration-secret".to_vec();
 
@@ -18,8 +14,8 @@ async fn starts_and_serves_plugins_search() {
     let app = build_app(state.clone());
 
     // Call the router directly using ServiceExt::oneshot to avoid network bindings and hyper version conflicts
-    use tower::util::ServiceExt; // for .oneshot()
     use axum::http::Request;
+    use tower::util::ServiceExt; // for .oneshot()
 
     let req: Request<axum::body::Body> = Request::builder()
         .method("GET")
@@ -30,5 +26,4 @@ async fn starts_and_serves_plugins_search() {
     let resp = app.oneshot(req).await.unwrap();
     let status = resp.status();
     assert!(status.is_success());
-
 }

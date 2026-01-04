@@ -52,7 +52,14 @@ impl AuditService {
         hasher.update(event.as_bytes());
         let hash = hex::encode(hasher.finalize());
 
-        let entry = AuditEntry { id: id.clone(), prev_hash, timestamp, user_id, event, hash: hash.clone() };
+        let entry = AuditEntry {
+            id: id.clone(),
+            prev_hash,
+            timestamp,
+            user_id,
+            event,
+            hash: hash.clone(),
+        };
 
         let key = format!("audit:{}", id);
         self.db.put(key.as_bytes(), &entry)?;

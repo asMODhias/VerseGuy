@@ -1,10 +1,9 @@
-use std::sync::Arc;
-use axum::body::Body;
-use axum::http::{Request, Method, Response};
-use serde_json::json;
-use master_server::state::AppState;
+use axum::http::{Method, Request, Response};
 use master_server::build_app;
-use master_server::plugins::{verify_manifest};
+use master_server::plugins::verify_manifest;
+use master_server::state::AppState;
+use serde_json::json;
+use std::sync::Arc;
 use tower::util::ServiceExt;
 
 #[tokio::test]
@@ -37,7 +36,9 @@ async fn register_login_publish_verify() {
         .unwrap();
     let resp: Response<axum::body::Body> = app.clone().oneshot(req).await.unwrap();
     assert!(resp.status().is_success());
-    let body_bytes = axum::body::to_bytes(resp.into_body(), 1024 * 1024).await.unwrap();
+    let body_bytes = axum::body::to_bytes(resp.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
     let v: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
     let token = v.get("token").and_then(|t| t.as_str()).unwrap();
     assert!(!token.is_empty());
@@ -71,12 +72,15 @@ async fn register_login_publish_verify() {
         .body(axum::body::Body::empty())
         .unwrap();
     let resp: Response<axum::body::Body> = app.oneshot(req).await.unwrap();
-    let body_bytes = axum::body::to_bytes(resp.into_body(), 1024 * 1024).await.unwrap();
+    let body_bytes = axum::body::to_bytes(resp.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
     let v: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
     let results = v.get("results").and_then(|r| r.as_array()).unwrap();
     assert_eq!(results.len(), 1);
     let manifest_json = &results[0];
-    let manifest: master_server::plugins::PluginManifest = serde_json::from_value(manifest_json.clone()).unwrap();
+    let manifest: master_server::plugins::PluginManifest =
+        serde_json::from_value(manifest_json.clone()).unwrap();
 
     // verify signature using server public key
     let pubkey = state.keypair.as_ref().unwrap().public;

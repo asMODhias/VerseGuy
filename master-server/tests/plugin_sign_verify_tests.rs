@@ -1,5 +1,5 @@
+use master_server::plugins::{verify_manifest, PluginManifest};
 use master_server::state::AppState;
-use master_server::plugins::{PluginManifest, verify_manifest};
 use tempfile::tempdir;
 
 #[test]
@@ -18,7 +18,12 @@ fn sign_and_verify() {
     };
 
     // store and sign
-    master_server::plugins::store_manifest(&state.storage, &manifest.with_published(), state.keypair.as_ref()).unwrap();
+    master_server::plugins::store_manifest(
+        &state.storage,
+        &manifest.with_published(),
+        state.keypair.as_ref(),
+    )
+    .unwrap();
 
     // verify
     let pubkey = state.keypair.as_ref().unwrap().public;
@@ -26,7 +31,15 @@ fn sign_and_verify() {
     assert!(ok);
 
     // revoke and ensure is_revoked returns true
-    master_server::plugins::revoke_manifest(&state.storage, &manifest.id, &manifest.version, "test revoke").unwrap();
-    let revoked = master_server::plugins::is_revoked(&state.storage, &manifest.id, &manifest.version).unwrap();
+    master_server::plugins::revoke_manifest(
+        &state.storage,
+        &manifest.id,
+        &manifest.version,
+        "test revoke",
+    )
+    .unwrap();
+    let revoked =
+        master_server::plugins::is_revoked(&state.storage, &manifest.id, &manifest.version)
+            .unwrap();
     assert!(revoked);
 }

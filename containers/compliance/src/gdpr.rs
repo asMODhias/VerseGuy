@@ -1,7 +1,7 @@
 use anyhow::Result;
-use serde::{Serialize};
+use serde::Serialize;
+use verseguy_auth::{session::SessionRecord, User};
 use verseguy_storage::RocksDBStorage;
-use verseguy_auth::{User, session::SessionRecord};
 
 #[derive(Serialize)]
 pub struct UserExport {
@@ -19,7 +19,10 @@ pub fn export_user_data(storage: &RocksDBStorage, user_id: &str) -> Result<Strin
 
     // Find sessions for this user
     let sessions: Vec<SessionRecord> = storage.prefix_scan(b"session:")?;
-    let user_sessions: Vec<SessionRecord> = sessions.into_iter().filter(|s| s.user_id == user_id).collect();
+    let user_sessions: Vec<SessionRecord> = sessions
+        .into_iter()
+        .filter(|s| s.user_id == user_id)
+        .collect();
 
     let export = UserExport {
         id: user_id.to_string(),

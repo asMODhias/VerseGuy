@@ -562,5 +562,15 @@ Quality_Standards:
 > - Run Rust tests: `cargo test --workspace`
 > - Run C++ tests: `cmake --build build --config Release && ctest --output-on-failure -C Release`
 > - Quick script: `./scripts/test.sh` (runs cargo tests then `ctest` when present)
+>
+> **Pre-commit hooks (recommended)** 🔐
+> - Hook location (repo-level): `.githooks/pre-commit`
+> - Enable locally: `git config core.hooksPath .githooks` (already set in this repo by the maintainer)
+> - What the hook does:
+>   - `cargo fmt --all -- --check` — fail if formatting is required
+>   - `cargo clippy --all-targets -- -D warnings` — treat lints as errors (best-effort; may be slow)
+>   - `cargo test --no-run --workspace` — ensures tests compile
+>   - If a C++ build exists (`core/build`), it lists discovered C++ tests with `ctest -N` (non-failing)
+> - Manual run (without committing): `./scripts/pre-commit.sh` (or `pwsh ./scripts/pre-commit.ps1` on PowerShell)
 
 END OF COPILOT INSTRUCTION

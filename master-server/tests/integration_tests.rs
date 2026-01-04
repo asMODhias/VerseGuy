@@ -1,16 +1,16 @@
 use reqwest::Client;
-use tempfile::tempdir;
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
+use tempfile::tempdir;
 
 #[tokio::test]
 async fn register_login_and_validate_license() {
     // Start the server as a child process with a temporary DB path and secret
     let dir = tempdir().unwrap();
-    let db_path = dir.path().to_str().unwrap().to_string();
+    let _db_path = dir.path().to_str().unwrap().to_string();
 
-    let mut child = Command::new(std::env::current_exe().unwrap())
+    let _child = Command::new(std::env::current_exe().unwrap())
         .arg("-h")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -24,7 +24,10 @@ async fn register_login_and_validate_license() {
 
     let client = Client::new();
     // Try contacting the server; if not available, skip test
-    let res = client.get("http://127.0.0.1:3000/plugins/search").send().await;
+    let res = client
+        .get("http://127.0.0.1:3000/plugins/search")
+        .send()
+        .await;
     if res.is_err() {
         eprintln!("Master server not running on 127.0.0.1:3000 — skipping integration HTTP tests");
         return;
