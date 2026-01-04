@@ -13,6 +13,10 @@ How to run tests:
 
   RUST_LOG=debug RUST_BACKTRACE=1 cargo test -p verseguy_p2p -- --nocapture ping_between_two_peers_libp2p_debug_mpsc --ignored
 
+- mDNS discovery test (ignored by default):
+
+  RUST_LOG=debug RUST_BACKTRACE=1 cargo test -p verseguy_p2p -- --nocapture ping_between_two_peers_mdns_discovery --ignored
+
 Notes:
 - The libp2p integration is actively being stabilized; transient dial errors (AddrInUse) are retried automatically in tests.
-- mDNS integration is next on the roadmap.
+- The mDNS test includes bounded timeouts and a deterministic one-way fallback dial to make it stable in CI; keep it ignored by default on CI unless you explicitly opt-in to run it on VM (it may rely on UDP/mDNS availability).
