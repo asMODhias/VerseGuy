@@ -26,19 +26,18 @@ impl AuditService {
     }
 
     pub fn log_event(&self, user_id: Option<String>, event: String) -> Result<AuditEntry> {
-        // scan for last audit entry (inefficient but fine for POC)
-        let mut latest_ts: i64 = 0;
+        // scan for last audit entry using deterministic ordering (timestamp, id)
         let mut prev_hash: Option<String> = None;
-        let items: Vec<AuditEntry> = self.db.prefix_scan(b"audit:")?;
-        for it in items {
-            if it.timestamp >= latest_ts {
-                latest_ts = it.timestamp;
-                prev_hash = Some(it.hash.clone());
-            }
+        let mut items: Vec<AuditEntry> = self.db.prefix_scan(b"audit:")?;
+        // sort by timestamp then id to have deterministic order and pick the last as previous
+        items.sort_by(|a, b| (a.timestamp, a.id.as_str()).cmp(&(b.timestamp, b.id.as_str())));
+        if let Some(last) = items.last() {
+            prev_hash = Some(last.hash.clone());
         }
 
         let id = Uuid::new_v4().to_string();
-        let timestamp = Utc::now().timestamp();
+        // use millisecond resolution to reduce chance of identical timestamps
+        let timestamp = Utc::now().timestamp_millis();
 
         // compute hash = sha256(prev_hash || timestamp || user_id || event)
         let mut hasher = Sha256::new();
@@ -70,7 +69,8 @@ impl AuditService {
     pub fn verify(&self) -> Result<bool> {
         // Verify chain integrity by recomputing hashes in chronological order
         let mut items: Vec<AuditEntry> = self.db.prefix_scan(b"audit:")?;
-        items.sort_by_key(|e| e.timestamp);
+        // deterministic sort by timestamp then id
+        items.sort_by(|a, b| (a.timestamp, a.id.as_str()).cmp(&(b.timestamp, b.id.as_str())));
         let mut prev_hash: Option<String> = None;
         for it in items {
             // recompute hash
@@ -95,6 +95,8 @@ impl AuditService {
     pub fn export_for_user(&self, user_id: &str) -> Result<Vec<AuditEntry>> {
         let mut items: Vec<AuditEntry> = self.db.prefix_scan(b"audit:")?;
         items.retain(|e| e.user_id.as_deref() == Some(user_id));
+        // sort deterministically by timestamp then id
+        items.sort_by(|a, b| (a.timestamp, a.id.as_str()).cmp(&(b.timestamp, b.id.as_str())));
         Ok(items)
     }
 }

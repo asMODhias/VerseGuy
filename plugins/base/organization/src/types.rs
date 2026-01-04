@@ -1,3 +1,6 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Organization {
     pub id: String,
     pub name: String,
@@ -5,6 +8,7 @@ pub struct Organization {
     pub member_count: usize,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Member {
     pub id: String,
     pub org_id: String,
