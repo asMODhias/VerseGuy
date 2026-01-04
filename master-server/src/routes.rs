@@ -160,7 +160,7 @@ pub async fn tos_get_handler(
     }
 }
 
-use crate::plugins::{search_manifests, store_manifest, PluginManifest};
+use crate::plugins::{search_manifests, store_manifest, PluginManifest, verify_manifest, revoke_manifest};
 use axum::extract::Query;
 use base64::engine::general_purpose;
 use base64::Engine;
@@ -350,4 +350,72 @@ pub async fn plugins_publish_handler(
         axum::http::StatusCode::CREATED,
         Json(serde_json::json!({"ok": true, "manifest": manifest})),
     ))
+}
+
+#[derive(Deserialize)]
+pub struct VerifyPluginRequest {
+    pub manifest: PluginManifest,
+    pub public_key_b64: String,
+}
+
+#[derive(Serialize)]
+pub struct VerifyPluginResponse {
+    pub valid: bool,
+    pub revoked: bool,
+}
+
+pub async fn verify_plugin_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<VerifyPluginRequest>,
+) -> Result<Json<VerifyPluginResponse>, (axum::http::StatusCode, String)> {
+    // parse public key
+    let pub_bytes = general_purpose::STANDARD
+        .decode(req.public_key_b64.trim())
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid pubkey: {}", e)))?;
+    let pubk = ed25519_dalek::PublicKey::from_bytes(&pub_bytes)
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid pubkey: {}", e)))?;
+
+    let valid = verify_manifest(&state.storage, &req.manifest, &pubk)
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+
+    let revoked = crate::plugins::is_revoked(&state.storage, &req.manifest.id, &req.manifest.version)
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+
+    Ok(Json(VerifyPluginResponse { valid, revoked }))
+}
+
+#[derive(Deserialize)]
+pub struct RevokeRequest {
+    pub id: String,
+    pub version: String,
+    pub reason: String,
+}
+
+pub async fn revoke_handler(
+    State(state): State<Arc<AppState>>,
+    req: axum::http::Request<axum::body::Body>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let headers = req.headers();
+    require_admin(headers)?;
+
+    let bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024)
+        .await
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("failed to read body: {}", e)))?;
+    let r: RevokeRequest = serde_json::from_slice(&bytes)
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid json: {}", e)))?;
+
+    revoke_manifest(&state.storage, &r.id, &r.version, &r.reason)
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+
+    Ok(Json(serde_json::json!({"ok": true})))
+}
+
+pub async fn revocations_list_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let items: Vec<serde_json::Value> = state
+        .storage
+        .prefix_scan(b"plugin_revoked:")
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"revocations": items})))
 }

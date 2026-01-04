@@ -54,3 +54,7 @@ A CI job `admin-cli-smoke` was added to `.github/workflows/ci.yml` that builds t
 ---
 
 Weitere Details und Spezifikationen siehe `VERSEGUY_COPILOT_COMPLETE.md`, `docs/openapi/admin_keys.yaml` sowie **UI‑Setup und VS Code Hinweise** in `docs/ui-vscode-setup.md`. Für schnelle Script‑Hinweise schaue in `scripts/README.md`.
+
+Weitere Dokumentation: [Documentation Index](docs/index.md) — enthält Architektur-, Legal-, Benutzer- und Entwicklerdokumentation.
+
+Docs status: many pages created from `VERSE_GUY_V2_ULTIMATE_SPECIFICATION.md`; placeholders remain for final legal text (DPA, country-specific clauses) and full API reference generation.

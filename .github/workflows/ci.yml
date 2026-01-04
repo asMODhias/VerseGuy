@@ -185,6 +185,42 @@ jobs:
             kill $(cat master_server.pid) || true
           fi
 
+  docs-validate:
+    name: Docs validation
+    runs-on: ubuntu-latest
+    needs: build-rust
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install markdown tooling
+        run: npm install -g markdownlint-cli markdown-link-check
+
+      - name: Run markdownlint
+        run: |
+          markdownlint "docs/**/*.md" 2>&1 | tee markdownlint.log
+          test ${PIPESTATUS[0]} -eq 0
+
+      - name: Run markdown-link-check
+        run: |
+          for f in $(find docs -type f -name "*.md"); do
+            echo "Checking $f";
+            markdown-link-check -q "$f" 2>&1 | tee "$f.link.log" || exit 1;
+          done
+
+      - name: Upload docs validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-validation-logs
+          path: |
+            markdownlint.log
+            docs/**/*.link.log
+
   meta:
     name: Sanity
     runs-on: ubuntu-latest

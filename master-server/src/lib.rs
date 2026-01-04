@@ -25,6 +25,9 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .route("/admin/keys/import", post(routes::admin_import_key))
         .route("/auth/tos", post(routes::tos_accept_handler))
         .route("/auth/tos/:user_id", get(routes::tos_get_handler))
+        .route("/verify/plugin", post(routes::verify_plugin_handler))
+        .route("/verify/revoke", post(routes::revoke_handler))
+        .route("/verify/revocations", get(routes::revocations_list_handler))
         .with_state(state)
 }
 
