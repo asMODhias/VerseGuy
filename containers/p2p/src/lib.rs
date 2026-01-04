@@ -1,7 +1,7 @@
 //! P2P crate: simple libp2p-based peer with ping test
 
 use anyhow::Result;
-use libp2p::{identity, PeerId};
+use libp2p::{PeerId, identity};
 
 pub struct Peer {
     pub id: PeerId,
@@ -24,7 +24,7 @@ mod tests {
 
     use libp2p::swarm::Config as SwarmConfig;
     use libp2p::swarm::SwarmEvent;
-    use libp2p::{ping, Swarm};
+    use libp2p::{Swarm, ping};
     use libp2p_tcp::tokio as tcp_tokio;
     use std::time::Duration;
 
@@ -32,8 +32,8 @@ mod tests {
         let key = identity::Keypair::generate_ed25519();
         let peer_id = PeerId::from(key.public());
 
-        use libp2p::core::multiaddr::Multiaddr as _Multiaddr;
         use libp2p::Transport as _TransportTrait;
+        use libp2p::core::multiaddr::Multiaddr as _Multiaddr;
 
         // Explicit TCP transport (Tokio) with Noise + Yamux
         let tcp = tcp_tokio::Transport::new(libp2p_tcp::Config::default());
@@ -352,7 +352,9 @@ mod tests {
 
                 // if no immediate listeners, poll the ping swarms for NewListenAddr events (bounded)
                 if s1_listen.is_none() && s2_listen.is_none() {
-                    eprintln!("no immediate ping listeners found, waiting briefly for NewListenAddr events");
+                    eprintln!(
+                        "no immediate ping listeners found, waiting briefly for NewListenAddr events"
+                    );
                     let start = tokio::time::Instant::now();
                     while start.elapsed() < Duration::from_secs(1) {
                         if let Ok(Some(SwarmEvent::NewListenAddr { address, .. })) =
