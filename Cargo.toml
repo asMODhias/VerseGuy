@@ -6,5 +6,12 @@ members = [
     "containers/compliance",
     "containers/audit",
     "containers/wasm_sandbox",
+    "containers/p2p",
     "master-server",
+    "plugins/registry",
+    "plugins/base/organization",
+    "plugins/base/fleet",
+    "plugins/base/operations",
+    "plugins/pro",
+    "plugins/adapters",
 ]

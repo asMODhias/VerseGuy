@@ -29,9 +29,8 @@ pub fn build_app(state: Arc<AppState>) -> Router {
 #[cfg(feature = "run-server")]
 pub async fn run_server(state: Arc<AppState>, addr: std::net::SocketAddr) -> anyhow::Result<()> {
     let app = build_app(state);
-    let listener = std::net::TcpListener::bind(addr)?;
-    listener.set_nonblocking(true)?;
-    let server = hyper::Server::from_tcp(listener)?.serve(app.into_make_service());
+    // Bind using axum's Server::bind (uses axum's compatible hyper version)
+    let server = axum::Server::bind(&addr).serve(app.into_make_service());
 
     tracing::info!("Master server running on {}", addr);
     server.await?;
