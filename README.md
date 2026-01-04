@@ -49,4 +49,8 @@ A CI job `admin-cli-smoke` was added to `.github/workflows/ci.yml` that builds t
 
 ---
 
+**Note:** This workspace uses `resolver = "2"` in `Cargo.toml` to enable Cargo's modern dependency resolver for projects using Rust 2021+. If you see resolver-related warnings, ensure your local Cargo is up-to-date.
+
+---
+
 Weitere Details und Spezifikationen siehe `VERSEGUY_COPILOT_COMPLETE.md`, `docs/openapi/admin_keys.yaml` sowie **UI‑Setup und VS Code Hinweise** in `docs/ui-vscode-setup.md`. Für schnelle Script‑Hinweise schaue in `scripts/README.md`.
