@@ -15,4 +15,5 @@ members = [
     "plugins/pro",
     "plugins/adapters",
     "plugins/template",
+    "tools/manifest-validator",
 ]

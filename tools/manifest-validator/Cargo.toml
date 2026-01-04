@@ -1,0 +1,10 @@
+[package]
+name = "manifest-validator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.7"
+glob = "0.3"
