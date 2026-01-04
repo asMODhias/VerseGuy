@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Cross-platform build wrapper for local development (POSIX)
+# Mirrors the checks done by scripts/ci-local.ps1 and CI workflows.
+# Usage: ./scripts/build.sh
+
+echo "Running scripts/build.sh - cross-platform build wrapper"
+
+# 1) Rust fmt
+if command -v cargo >/dev/null 2>&1; then
+  echo "-> cargo fmt --all -- --check"
+  cargo fmt --all -- --check
+else
+  echo "cargo not found, skipping Rust format" >&2
+fi
+
+# 2) Rust clippy
+if command -v cargo >/dev/null 2>&1; then
+  echo "-> cargo clippy --all-targets --all-features -- -D warnings"
+  cargo clippy --all-targets --all-features -- -D warnings
+else
+  echo "cargo not found, skipping clippy" >&2
+fi
+
+# 3) Run cargo tests
+if command -v cargo >/dev/null 2>&1; then
+  echo "-> cargo test --workspace --verbose"
+  cargo test --workspace --verbose
+else
+  echo "cargo not found, skipping cargo test" >&2
+fi
+
+# 4) Build C++ core via CMake
+if command -v cmake >/dev/null 2>&1; then
+  echo "-> cmake -S core -B core/build -DCMAKE_BUILD_TYPE=Release"
+  cmake -S core -B core/build -DCMAKE_BUILD_TYPE=Release
+  cmake --build core/build --config Release
+
+  if command -v ctest >/dev/null 2>&1; then
+    echo "-> ctest --output-on-failure -C Release"
+    (cd core/build && ctest --output-on-failure -C Release)
+  else
+    echo "ctest not found, skipping C++ tests" >&2
+  fi
+else
+  echo "CMake not found, skipping core build" >&2
+fi
+
+# 5) Build WinUI (if dotnet is available)
+if command -v dotnet >/dev/null 2>&1; then
+  echo "-> dotnet build ui/native/VerseguY.UI/VerseguY.UI.csproj -c Release"
+  dotnet build ui/native/VerseguY.UI/VerseguY.UI.csproj -c Release
+else
+  echo "dotnet CLI not found, skipping WinUI build" >&2
+fi
+
+echo "Build wrapper completed."
