@@ -49,4 +49,4 @@ A CI job `admin-cli-smoke` was added to `.github/workflows/ci.yml` that builds t
 
 ---
 
-Weitere Details und Spezifikationen siehe `VERSEGUY_COPILOT_COMPLETE.md` und `docs/openapi/admin_keys.yaml`.
+Weitere Details und Spezifikationen siehe `VERSEGUY_COPILOT_COMPLETE.md`, `docs/openapi/admin_keys.yaml` sowie **UI‑Setup und VS Code Hinweise** in `docs/ui-vscode-setup.md`. Für schnelle Script‑Hinweise schaue in `scripts/README.md`.
