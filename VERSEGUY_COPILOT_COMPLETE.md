@@ -541,6 +541,26 @@ Quality_Standards:
 
 **VERSION:** 2.0.0-local
 **STATUS:** Development Active
-**LAST UPDATED:** 2026-01-03
+**LAST UPDATED:** 2026-01-04
+
+---
+
+## 📝 Recent changes (2026-01-04) ✅
+- **CTest / C++ tests**: Enabled CTest in the top-level CMake and added CTest-based CI step (run with `ctest --output-on-failure -C Release`).
+- **Cross-platform scripts**: Added `scripts/build.sh` and `scripts/test.sh` (designed for WSL/Git Bash on Windows). Examples:
+  - `./scripts/build.sh --release` — configure & build C++ and Rust components
+  - `./scripts/test.sh` — runs `cargo test` and `ctest` where available
+- **Launcher**: Added `--no-gui` / `VERSEGUY_HEADLESS` support and a launcher smoke test registered with CTest.
+- **Audit log**: Added `verseguy_audit` crate (append-only SHA256 hash chain) with unit tests and verification API.
+- **Compliance (GDPR)**: Implemented `export_user_data` and `delete_user_data` in `containers/compliance` with tests.
+- **WASM sandbox (POC)**: Added `verseguy_wasm_sandbox` demonstrating a Wasmtime-based sandbox and tests.
+- **E2E tests**: Added master-server end-to-end test covering register → login → publish → verify flow.
+- **Git**: Initialized local repo and split the initial large commit into focused commits on branch `chore/init-repo-scripts` (no remote push without approval).
+
+> **How to run tests locally** 🔧
+> - Build everything: `./scripts/build.sh` (or use CMake / Cargo directly)
+> - Run Rust tests: `cargo test --workspace`
+> - Run C++ tests: `cmake --build build --config Release && ctest --output-on-failure -C Release`
+> - Quick script: `./scripts/test.sh` (runs cargo tests then `ctest` when present)
 
 END OF COPILOT INSTRUCTION
