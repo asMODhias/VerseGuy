@@ -17,4 +17,12 @@ if (Test-Path "core/build") {
   }
 }
 
+# Validate manifests (optional: set SKIP_MANIFEST_VALIDATION=1 to skip locally)
+Write-Host "-> validate manifests"
+if (-not $env:SKIP_MANIFEST_VALIDATION) {
+  & cargo run -p manifest-validator --
+} else {
+  Write-Host "Skipping manifest validation (SKIP_MANIFEST_VALIDATION set)"
+}
+
 Pop-Location

@@ -21,4 +21,12 @@ if [ -d "core/build" ]; then
   fi
 fi
 
+# 5) Validate plugin manifests (optional: SKIP_MANIFEST_VALIDATION=1 to skip locally)
+echo "-> validate manifests"
+if [ -z "${SKIP_MANIFEST_VALIDATION:-}" ]; then
+  ./scripts/validate-manifests.sh
+else
+  echo "Skipping manifest validation (SKIP_MANIFEST_VALIDATION set)"
+fi
+
 echo "Pre-commit checks passed."

@@ -22,6 +22,10 @@ Kurzcheckliste für VS Code Nutzer, um lokal die wichtigsten Builds und die UI z
 ⚠️ Lokale CI Hinweis:
 - Das lokale Skript `scripts/ci-local.ps1` gibt jetzt bei fehlendem UI Build eine Warnung und fährt fort. Wenn du den UI-Build streng erzwingen möchtest, setze die Umgebungsvariable `CI_STRICT_UI_BUILD=1`.
 
+🔐 Pre-commit: manifest validation
+- Pre-commit läuft nun `scripts/validate-manifests.sh` (oder `cargo run -p manifest-validator --`) und validiert `plugins/**/manifest.toml`.
+- Um die Validierung lokal zu überspringen setze `SKIP_MANIFEST_VALIDATION=1`.
+
 Hilfe / Troubleshooting:
 - Wenn `dotnet build` den Fehler `NETSDK1083` (RuntimeIdentifier wird nicht erkannt) anzeigt, folge den Schritten in `docs/ui-vscode-setup.md`.
 
