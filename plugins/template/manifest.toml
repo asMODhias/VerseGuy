@@ -1,0 +1,18 @@
+[plugin]
+id = "org.verseguy.template"
+name = "Plugin Template"
+version = "0.1.0"
+author = "Verse Guy Team"
+description = "Plugin template to be copied for creating new plugins"
+license_required = "Free"
+core_version_min = "2.0.0"
+sdk_version = "1.0.0"
+
+[capabilities]
+required = [
+    "storage:read",
+]
+
+optional = [
+    "ui:panel",
+]

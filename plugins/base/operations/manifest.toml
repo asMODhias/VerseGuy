@@ -1,0 +1,36 @@
+[plugin]
+id = "org.verseguy.operations"
+name = "Operations"
+version = "1.0.0"
+author = "Verse Guy Team"
+description = "Mission planning and operations workflows"
+license_required = "Free"
+core_version_min = "2.0.0"
+sdk_version = "1.0.0"
+
+[capabilities]
+required = [
+    "storage:read",
+    "storage:write",
+    "ui:panel",
+]
+
+optional = [
+    "network:master_server",
+    "notifications:system",
+]
+
+[subplugins.missions]
+name = "Missions"
+enabled_by_default = true
+license_required = "Free"
+
+[subplugins.planning]
+name = "Planning"
+enabled_by_default = true
+license_required = "Free"
+
+[subplugins.tasking]
+name = "Tasking"
+enabled_by_default = false
+license_required = "Pro"

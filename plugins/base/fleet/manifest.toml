@@ -1,0 +1,37 @@
+[plugin]
+id = "org.verseguy.fleet"
+name = "Fleet Management"
+version = "1.0.0"
+author = "Verse Guy Team"
+description = "Fleet and squadron management"
+license_required = "Free"
+core_version_min = "2.0.0"
+sdk_version = "1.0.0"
+
+[capabilities]
+required = [
+    "storage:read",
+    "storage:write",
+    "network:p2p",
+    "ui:panel",
+]
+
+optional = [
+    "notifications:system",
+    "rbac",
+]
+
+[subplugins.squadrons]
+name = "Squadrons"
+enabled_by_default = true
+license_required = "Free"
+
+[subplugins.maintenance]
+name = "Maintenance"
+enabled_by_default = true
+license_required = "Free"
+
+[subplugins.logistics]
+name = "Logistics"
+enabled_by_default = false
+license_required = "Pro"

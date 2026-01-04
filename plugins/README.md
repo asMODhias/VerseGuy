@@ -8,7 +8,9 @@ Dieses Verzeichnis enthält Plugin‑Crates und eine einfache **Registry** zur L
 - `plugins/base/*` — Standardplugin‑Bibliotheken (z. B. `organization`, `fleet`, `operations`)
 - `plugins/pro` — Pro‑Plugins (example)
 - `plugins/adapters` — Adapter‑Plugins (example)
+- `plugins/template` — Plugin‑Template (Manifest + Cargo crate + tests)
 
+Manifests are provided for `organization`, `fleet` and `operations` under each plugin folder.
 ## Ziel
 Die Plugin‑Architektur soll leichtgewichtig sein: jeder Plugin‑Crate ist eine normale Rust‑Bibliothek, die über den Registry‑Dienst zur Laufzeit registriert werden kann.
 
