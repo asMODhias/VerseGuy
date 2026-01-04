@@ -20,6 +20,7 @@ chrono = { version = "0.4", features = ["serde"] }
 verseguy_storage = { path = "../containers/storage" }
 verseguy_auth = { path = "../containers/auth" }
 verseguy_licensing = { path = "../containers/licensing" }
+verseguy_compliance = { path = "../containers/compliance" }
 hyper = { version = "0.14", features = ["server"] }
 
 # Ed25519 for plugin signing

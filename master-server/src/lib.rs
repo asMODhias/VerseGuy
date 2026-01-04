@@ -23,6 +23,8 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .route("/admin/keys", get(routes::admin_get_keys))
         .route("/admin/keys/rotate", post(routes::admin_rotate_key))
         .route("/admin/keys/import", post(routes::admin_import_key))
+        .route("/auth/tos", post(routes::tos_accept_handler))
+        .route("/auth/tos/:user_id", get(routes::tos_get_handler))
         .with_state(state)
 }
 

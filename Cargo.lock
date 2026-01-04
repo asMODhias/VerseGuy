@@ -2540,6 +2540,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "verseguy_auth",
+ "verseguy_compliance",
  "verseguy_licensing",
  "verseguy_storage",
 ]

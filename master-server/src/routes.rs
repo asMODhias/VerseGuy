@@ -92,6 +92,74 @@ pub async fn license_validate_handler(
     Ok(Json(LicenseValidateResponse { valid }))
 }
 
+#[derive(Deserialize)]
+pub struct TosAcceptRequest {
+    pub user_id: String,
+    pub accepted_at: i64,
+    pub version: String,
+}
+
+#[derive(Serialize)]
+pub struct TosAcceptResponse {
+    pub ok: bool,
+}
+
+pub async fn tos_accept_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<TosAcceptRequest>,
+) -> Result<Json<TosAcceptResponse>, (axum::http::StatusCode, String)> {
+    // validate using compliance crate
+    let payload = serde_json::json!({"user_id": req.user_id, "accepted_at": req.accepted_at, "version": req.version});
+    let s = payload.to_string();
+    let t = verseguy_compliance::validate_tos_acceptance(&s)
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("{}", e)))?;
+
+    // store in storage under key `tos:{user_id}:{version}` and `tos:latest:{user_id}`
+    let key = format!("tos:{}:{}", t.user_id, t.version);
+    state.storage.put(key.as_bytes(), &t).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}", e),
+        )
+    })?;
+
+    let latest_key = format!("tos:latest:{}", t.user_id);
+    state.storage.put(latest_key.as_bytes(), &t).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}", e),
+        )
+    })?;
+
+    Ok(Json(TosAcceptResponse { ok: true }))
+}
+
+use axum::extract::Path;
+
+pub async fn tos_get_handler(
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let latest_key = format!("tos:latest:{}", user_id);
+    let rec: Option<verseguy_compliance::tos_validator::TosAcceptance> =
+        state.storage.get(latest_key.as_bytes()).map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("{}", e),
+            )
+        })?;
+    if let Some(r) = rec {
+        Ok(Json(
+            serde_json::json!({"user_id": r.user_id, "accepted_at": r.accepted_at, "version": r.version}),
+        ))
+    } else {
+        Err((
+            axum::http::StatusCode::NOT_FOUND,
+            "tos acceptance not found".to_string(),
+        ))
+    }
+}
+
 use crate::plugins::{search_manifests, store_manifest, PluginManifest};
 use axum::extract::Query;
 use base64::engine::general_purpose;
