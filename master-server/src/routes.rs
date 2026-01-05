@@ -332,46 +332,46 @@ pub async fn orgs_get_handler(
 
 // --- Stubs for handlers referenced by older routes ---
 pub async fn tos_accept_handler(
-    _State(_state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     Err((axum::http::StatusCode::NOT_IMPLEMENTED, "TOS acceptance not implemented".to_string()))
 }
 
 pub async fn tos_get_handler(
-    _State(_state): State<Arc<AppState>>,
-    _Path(_user_id): Path<String>,
+    State(_state): State<Arc<AppState>>,
+    Path(_user_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     Err((axum::http::StatusCode::NOT_IMPLEMENTED, "TOS fetch not implemented".to_string()))
 }
 
 pub async fn verify_plugin_handler(
-    _State(_state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Plugin verification not implemented".to_string()))
 }
 
 pub async fn revoke_handler(
-    _State(_state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Revocation not implemented".to_string()))
 }
 
 pub async fn revocations_list_handler(
-    _State(_state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Revocations list not implemented".to_string()))
 }
 
 pub async fn audit_export_handler(
-    _State(_state): State<Arc<AppState>>,
-    _Path(_user_id): Path<String>,
+    State(_state): State<Arc<AppState>>,
+    Path(_user_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Audit export not implemented".to_string()))
 }
 
 pub async fn user_data_delete_handler(
-    _State(_state): State<Arc<AppState>>,
-    _Path(_user_id): Path<String>,
+    State(_state): State<Arc<AppState>>,
+    Path(_user_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     Err((axum::http::StatusCode::NOT_IMPLEMENTED, "User data deletion not implemented".to_string()))
 }

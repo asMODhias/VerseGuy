@@ -35,7 +35,7 @@ if [ ! -f README.md ]; then
 
 ## Status
 
-ðŸš§ **In Active Development** ðŸš§
+ÃƒÂ°Ã…Â¸Ã…Â¡Ã‚Â§ **In Active Development** ÃƒÂ°Ã…Â¸Ã…Â¡Ã‚Â§
 
 Current Phase: Core Implementation (Week 1-2)
 
@@ -69,6 +69,7 @@ MIT License - See LICENSE file
 README
 fi
 
-echo "âœ… Verzeichnis-Struktur erstellt"
+echo "ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Verzeichnis-Struktur erstellt"
 
 exit 0
+

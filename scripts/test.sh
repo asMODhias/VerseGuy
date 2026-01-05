@@ -15,7 +15,7 @@ NC='\033[0m'
 # Rust tests
 echo -e "${YELLOW}Running Rust tests...${NC}"
 cargo test --workspace
-echo -e "${GREEN}âœ“ Rust tests passed${NC}"
+echo -e "${GREEN}ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Rust tests passed${NC}"
 echo ""
 
 # C++ tests (if any)
@@ -37,5 +37,6 @@ if [ -f "ui/web/package.json" ]; then
 fi
 
 echo "=================================="
-echo -e "${GREEN}âœ“ All tests complete${NC}"
+echo -e "${GREEN}ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ All tests complete${NC}"
 echo "=================================="
+

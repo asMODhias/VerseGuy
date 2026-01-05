@@ -331,10 +331,19 @@ pub fn extract_p4k_to_dir<P: AsRef<Path>, Q: AsRef<Path>>(p4k: P, outdir: Q) -> 
     // check unp4k availability
     let which = if cfg!(target_os = "windows") { "where" } else { "which" };
     let which_out = Command::new(which).arg("unp4k").output();
-    if which_out.is_err() || !which_out.unwrap().status.success() {
-        return Err(anyhow::anyhow!(
-            "`unp4k` not found in PATH. Please install https://github.com/dolkensp/unp4k and ensure it's on PATH."
-        ));
+    match which_out {
+        Ok(out) => {
+            if !out.status.success() {
+                return Err(anyhow::anyhow!(
+                    "`unp4k` not found in PATH. Please install https://github.com/dolkensp/unp4k and ensure it's on PATH."
+                ));
+            }
+        }
+        Err(_) => {
+            return Err(anyhow::anyhow!(
+                "`unp4k` not found in PATH. Please install https://github.com/dolkensp/unp4k and ensure it's on PATH."
+            ));
+        }
     }
 
     let outdirp = outdir.as_ref();
@@ -373,9 +382,9 @@ mod tests {
 
     #[test]
     fn import_sample_file() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("failed to create tempdir");
         let dbpath = dir.path().join("db");
-        let storage = RocksDBStorage::open(dbpath).unwrap();
+        let storage = RocksDBStorage::open(dbpath).expect("failed to open RocksDB storage");
 
         // prepare sample JSON
         let sample = r#"[
@@ -383,13 +392,13 @@ mod tests {
             {"id":"ship-b","name":"Ship B","role":"transport"}
         ]"#;
         let file = dir.path().join("sample.json");
-        std::fs::write(&file, sample).unwrap();
+        std::fs::write(&file, sample).expect("failed to write sample file");
 
-        let n = import_from_file(file.to_str().unwrap(), &storage).unwrap();
+        let n = import_from_file(file.to_str().expect("file path not utf8"), &storage).expect("import failed");
         assert_eq!(n, 2);
 
-        let s: Option<ScShip> = storage.get(b"scunpacked:ship:ship-a").unwrap();
+        let s: Option<ScShip> = storage.get(b"scunpacked:ship:ship-a").expect("db get failed");
         assert!(s.is_some());
-        assert_eq!(s.unwrap().name, "Ship A");
+        assert_eq!(s.expect("expected ship present").name, "Ship A");
     }
 }

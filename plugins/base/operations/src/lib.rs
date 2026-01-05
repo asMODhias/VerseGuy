@@ -237,7 +237,7 @@ mod tests {
             Utc::now(),
             60,
             "leader123".to_string(),
-        ).unwrap();
+        ).expect("Failed to create operation");
         
         service.add_participant(
             &operation.org_id,
@@ -248,8 +248,8 @@ mod tests {
         ).expect("Failed to add participant");
         
         let updated = service.get_operation(&operation.org_id, &operation.id)
-            .unwrap()
-            .unwrap();
+            .expect("failed to get operation")
+            .expect("operation not found");
         
         assert_eq!(updated.participants.len(), 1);
         assert_eq!(updated.participants[0].role, "Pilot");
@@ -267,7 +267,7 @@ mod tests {
             Utc::now(),
             60,
             "leader123".to_string(),
-        ).unwrap();
+        ).expect("Failed to create operation");
         
         service.add_participant(
             &operation.org_id,
@@ -275,14 +275,14 @@ mod tests {
             "user123".to_string(),
             "Pilot".to_string(),
             None,
-        ).unwrap();
+        ).expect("failed to add participant");
         
         service.confirm_participant(&operation.org_id, &operation.id, "user123")
             .expect("Failed to confirm participant");
         
         let updated = service.get_operation(&operation.org_id, &operation.id)
-            .unwrap()
-            .unwrap();
+            .expect("failed to get operation")
+            .expect("operation not found");
         
         assert!(updated.participants[0].confirmed);
     }

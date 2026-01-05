@@ -32,9 +32,9 @@ pub struct FleetPlugin {
 impl FleetPlugin {
     pub fn new() -> Self {
         Self {
-            id: CString::new("org.verseguy.fleet").unwrap(),
-            name: CString::new("Fleet Management").unwrap(),
-            version: CString::new("1.0.0").unwrap(),
+            id: CString::new("org.verseguy.fleet").expect("invalid plugin id string"),
+            name: CString::new("Fleet Management").expect("invalid plugin name string"),
+            version: CString::new("1.0.0").expect("invalid plugin version string"),
             host: std::ptr::null_mut(),
         }
     }

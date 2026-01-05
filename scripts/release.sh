@@ -47,7 +47,8 @@ cp LICENSE "$RELEASE_DIR/" || true
 
 echo ""
 echo "=================================="
-echo "âœ“ Release v$VERSION built!"
+echo "ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Release v$VERSION built!"
 echo "=================================="
 echo ""
 echo "Location: $RELEASE_DIR"
+

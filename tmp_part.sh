@@ -78,19 +78,9 @@ estimated_download_sec=$(awk -v s=$total_base_size -v bw=$BW_MB 'BEGIN{print int
 estimated_build_sec=$(awk -v s=$additional_size -v coeff=$BUILD_SEC_PER_MB 'BEGIN{print int((s/1024/1024)*coeff)+30}')
 estimated_total_sec=$((estimated_download_sec + estimated_build_sec))
 
-format_bytes() {
-  if [ "$1" -ge $((1024*1024*1024)) ]; then
-    printf "%.2f GB" "$(awk -v b=$1 'BEGIN{print b/1024/1024/1024}')"
-  elif [ "$1" -ge $((1024*1024)) ]; then
-    printf "%.2f MB" "$(awk -v b=$1 'BEGIN{print b/1024/1024}')"
-  else
-    printf "%d B" "$1"
-  fi
-}
+format_bytes() { if [ "$1" -ge $((1024*1024*1024)) ]; then printf "%.2f GB" "$(awk -v b=$1 'BEGIN{print b/1024/1024/1024}')"; elif [ "$1" -ge $((1024*1024)) ]; then printf "%.2f MB" "$(awk -v b=$1 'BEGIN{print b/1024/1024}')"; else printf "%d B" "$1"; fi }
 
-format_time() {
-  date -ud "@$1" +'%H:%M:%S'
-}
+format_time() { printf "%s" "$(date -ud "@${1}" +'%H:%M:%S')" }
 
 echo "Erwartete Image-Größe: $(format_bytes $total_estimated_image_size) (Basis: $(format_bytes $final_base_size), zusätzliche Dateien: $(format_bytes $additional_size))"
 echo "Geschätzte Dauer: $(format_time $estimated_total_sec) (Netzwerkannahme: $BW_MB MB/s)"
@@ -128,10 +118,7 @@ docker build --progress=plain "$@" 2>&1 | while IFS= read -r line; do
     estTotal=$(( elapsed + estRem ))
     pct=0
     if [ $total -gt 0 ]; then pct=$(( current_step * 100 / total )); fi
-    etime="$(date -ud @${elapsed} +'%H:%M:%S')"
-    etotal="$(date -ud @${estTotal} +'%H:%M:%S')"
-    erem="$(date -ud @${estRem} +'%H:%M:%S')"
-    printf "\rProgress: %s/%s (%d%%) - Zeit: %s / %s (verbleibend ~%s)\033[K" "$current_step" "$total" "$pct" "$etime" "$etotal" "$erem"
+    printf "\rProgress: %s/%s (%d%%) - Zeit: %s / %s (verbleibend ~%s)\033[K" "$current_step" "$total" "$pct" "$(date -ud @${elapsed} +'%H:%M:%S')" "$(date -ud @${estTotal} +'%H:%M:%S')" "$(date -ud @${estRem} +'%H:%M:%S')"
   else
     printf "\n"; echo "$line";
   fi

@@ -23,7 +23,7 @@ impl Registry {
     }
 
     pub fn register(&self, p: PluginInfo) {
-        let mut lock = self.plugins.lock().unwrap();
+        let mut lock = self.plugins.lock().expect("plugins mutex poisoned");
         // replace existing with same id
         if let Some(pos) = lock.iter().position(|x| x.id == p.id) {
             lock[pos] = p;
@@ -33,12 +33,12 @@ impl Registry {
     }
 
     pub fn list(&self) -> Vec<PluginInfo> {
-        let lock = self.plugins.lock().unwrap();
+        let lock = self.plugins.lock().expect("plugins mutex poisoned");
         lock.clone()
     }
 
     pub fn find(&self, id: &str) -> Option<PluginInfo> {
-        let lock = self.plugins.lock().unwrap();
+        let lock = self.plugins.lock().expect("plugins mutex poisoned");
         lock.iter().find(|p| p.id == id).cloned()
     }
 }

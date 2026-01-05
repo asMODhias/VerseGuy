@@ -18,6 +18,7 @@ members = [
     "plugins/adapters/discord",
     "plugins/template",
     "tools/manifest-validator",
+    "tools/sample_crate",
 ]
 
 [workspace.package]
