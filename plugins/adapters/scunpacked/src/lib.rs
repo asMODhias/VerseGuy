@@ -49,7 +49,11 @@ fn meta_key() -> &'static [u8] {
 pub fn import_from_reader<R: Read>(mut rdr: R, storage: &RocksDBStorage) -> Result<usize> {
     let mut data = String::new();
     rdr.read_to_string(&mut data)?;
-    let ships: Vec<ScShip> = serde_json::from_str(&data)?;
+
+    // parse JSON into Value and then normalize into Vec<ScShip>
+    let v: Value = serde_json::from_str(&data)?;
+    let ships = parse_ships_from_value(&v)?;
+
     let mut count = 0usize;
 
     for s in ships {
@@ -72,6 +76,51 @@ pub fn import_from_reader<R: Read>(mut rdr: R, storage: &RocksDBStorage) -> Resu
         now.to_rfc3339()
     );
     Ok(count)
+}
+
+/// Try to extract one or more ScShip entries from an arbitrary JSON value.
+pub fn parse_ships_from_value(v: &Value) -> Result<Vec<ScShip>> {
+    // If it's an array, try to deserialize Vec<ScShip>
+    if let Some(arr) = v.as_array() {
+        // first try direct deserialization
+        if let Ok(sv) = serde_json::from_value::<Vec<ScShip>>(v.clone()) {
+            return Ok(sv);
+        }
+        // otherwise, try to convert each element
+        let mut out = Vec::new();
+        for item in arr {
+            if let Ok(s) = serde_json::from_value::<ScShip>(item.clone()) {
+                out.push(s);
+            }
+        }
+        if !out.is_empty() {
+            return Ok(out);
+        }
+    }
+
+    // If it's an object
+    if let Some(obj) = v.as_object() {
+        // If it looks like a single ship (has id or name), try deserialize to ScShip
+        if obj.contains_key("id") || obj.contains_key("name") || obj.contains_key("displayname") {
+            if let Ok(s) = serde_json::from_value::<ScShip>(v.clone()) {
+                return Ok(vec![s]);
+            }
+        }
+
+        // Otherwise, it might be a mapping of id->object. Try to iterate values and deserialize
+        let mut out = Vec::new();
+        for (_k, val) in obj.iter() {
+            if let Ok(s) = serde_json::from_value::<ScShip>(val.clone()) {
+                out.push(s);
+            }
+        }
+        if !out.is_empty() {
+            return Ok(out);
+        }
+    }
+
+    // nothing found
+    Ok(Vec::new())
 }
 
 /// Import from a local file path
@@ -273,18 +322,14 @@ pub fn import_from_extracted_dir<P: AsRef<Path>>(
 }
 
 /// Import directly from a .p4k archive using `unp4k` from PATH. If `unp4k` isn't available, returns an error explaining the requirement.
-pub fn import_from_p4k<P: AsRef<Path>>(p4k: P, storage: &RocksDBStorage) -> Result<usize> {
+pub fn extract_p4k_to_dir<P: AsRef<Path>, Q: AsRef<Path>>(p4k: P, outdir: Q) -> Result<usize> {
     let p4k = p4k.as_ref();
     if !p4k.exists() {
         return Err(anyhow::anyhow!("p4k path does not exist"));
     }
 
     // check unp4k availability
-    let which = if cfg!(target_os = "windows") {
-        "where"
-    } else {
-        "which"
-    };
+    let which = if cfg!(target_os = "windows") { "where" } else { "which" };
     let which_out = Command::new(which).arg("unp4k").output();
     if which_out.is_err() || !which_out.unwrap().status.success() {
         return Err(anyhow::anyhow!(
@@ -292,20 +337,31 @@ pub fn import_from_p4k<P: AsRef<Path>>(p4k: P, storage: &RocksDBStorage) -> Resu
         ));
     }
 
-    let tmpdir = tempfile::tempdir()?;
-    let outdir = tmpdir.path();
-    // extract only xml and ini (per scunpacked docs)
+    let outdirp = outdir.as_ref();
+    std::fs::create_dir_all(outdirp)?;
+
     // Use current_dir to place extracted files into outdir
-    let status = Command::new("unp4k")
-        .current_dir(outdir)
-        .arg(p4k)
-        .arg("*.xml")
-        .status()?;
+    let status = Command::new("unp4k").current_dir(outdirp).arg(p4k).arg("*.xml").status()?;
     if !status.success() {
         return Err(anyhow::anyhow!("unp4k failed to extract files"));
     }
 
-    // now import from extracted directory
+    // count extracted xml files
+    let mut count = 0usize;
+    for entry in std::fs::read_dir(outdirp)? {
+        let p = entry?.path();
+        if p.is_file() && p.extension().and_then(|s| s.to_str()).map(|s| s.eq_ignore_ascii_case("xml")).unwrap_or(false) {
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
+pub fn import_from_p4k<P: AsRef<Path>>(p4k: P, storage: &RocksDBStorage) -> Result<usize> {
+    // backwards-compatible convenience function: extract then import
+    let tmpdir = tempfile::tempdir()?;
+    let outdir = tmpdir.path();
+    extract_p4k_to_dir(p4k, outdir)?;
     let n = import_from_extracted_dir(outdir, storage)?;
     Ok(n)
 }
