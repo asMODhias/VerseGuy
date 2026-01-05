@@ -20,7 +20,12 @@ async fn main() -> anyhow::Result<()> {
     // If compiled with feature 'run-server', run it by default
     #[cfg(feature = "run-server")]
     {
-        let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
+        // Allow overriding default port via MASTER_SERVER_PORT env var for E2E tests and flexibility
+        let port: u16 = std::env::var("MASTER_SERVER_PORT")
+            .ok()
+            .and_then(|s| s.parse::<u16>().ok())
+            .unwrap_or(3000);
+        let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
         run_server(state, addr).await?;
     }
 

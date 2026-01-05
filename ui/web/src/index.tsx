@@ -1,7 +1,13 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
-const App = () => <div>Hello VerseguY (web)</div>;
+import OrganizationTab from './tabs/OrganizationTab'
+
+const App = () => (
+  <div>
+    <OrganizationTab />
+  </div>
+)
 
 const root = document.createElement('div');
 root.id = 'root';
