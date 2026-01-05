@@ -7,12 +7,16 @@ members = [
     "containers/compliance",
     "containers/p2p",
     "containers/audit",
+    "containers/wasm_sandbox",
+    "master-server",
     "plugins/registry",
     "plugins/base/organization",
     "plugins/base/fleet",
     "plugins/base/operations",
+    "plugins/pro",
     "plugins/adapters/rsi",
     "plugins/adapters/discord",
+    "plugins/template",
     "tools/manifest-validator",
 ]
 
