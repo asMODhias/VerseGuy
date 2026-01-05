@@ -25,13 +25,14 @@ jobs:
             markdown-link-check -q "$f" || true;
           done
 
-      - name: Compliance: verify legal placeholders
+      - name: "Compliance: verify legal placeholders"
         run: |
           echo "Checking legal placeholder status file..."
           if [ -f docs/legal/PLACEHOLDER_STATUS.md ]; then
-            echo "PLACEHOLDER_STATUS found";
+            echo "PLACEHOLDER_STATUS found"
           else
-            echo "No PLACEHOLDER_STATUS found; please add docs/legal/PLACEHOLDER_STATUS.md"; exit 1;
+            echo "No PLACEHOLDER_STATUS found; please add docs/legal/PLACEHOLDER_STATUS.md"
+            exit 1
           fi
 
       - name: Summary

@@ -15,6 +15,7 @@ members = [
     "plugins/base/operations",
     "plugins/pro",
     "plugins/adapters",
+    "plugins/adapters/scunpacked",
     "plugins/template",
     "tools/manifest-validator",
 ]

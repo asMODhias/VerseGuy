@@ -55,4 +55,20 @@ else
   echo "dotnet CLI not found, skipping WinUI build" >&2
 fi
 
+# 6) Docker: check daemon and build container images
+if command -v docker >/dev/null 2>&1; then
+  echo "-> docker info (verify daemon)"
+  docker info >/dev/null 2>&1 || { echo 'Docker daemon not running or not accessible' >&2; exit 1; }
+
+  echo "-> Pull base images"
+  docker pull rust:1.70-slim-bullseye
+  docker pull debian:bullseye-slim
+
+  echo "-> Build containers/p2p image (with progress)"
+  echo "-> invoking scripts/docker-build-wrapper.sh -t verseguy/p2p:local -f containers/p2p/Dockerfile ."
+  ./scripts/docker-build-wrapper.sh -t verseguy/p2p:local -f containers/p2p/Dockerfile .
+else
+  echo "docker CLI not found, skipping container image builds" >&2
+fi
+
 echo "Build wrapper completed."

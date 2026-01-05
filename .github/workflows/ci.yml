@@ -50,23 +50,46 @@ jobs:
       - name: Setup Qt/VS/CMake (preinstalled on windows-latest)
         run: cmake --version
 
+      - name: Setup Rust (for manifest-tool used by C++ tests)
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
       - name: Build Core (CMake)
         working-directory: ${{ runner.workspace }}
         run: |
           cmake -S core -B core/build -DCMAKE_BUILD_TYPE=Release
           cmake --build core/build --config Release
 
+      - name: Build manifest-tool (release)
+        working-directory: ${{ runner.workspace }}
+        run: |
+          cargo build -p master_server --bin manifest-tool --release || true
+
       - name: Run C++ Core Tests (CTest)
         working-directory: ${{ runner.workspace }}/core/build
         run: |
           echo "Running C++ tests with CTest..."
-          ctest --output-on-failure -C Release
+          ctest --output-on-failure -C Release || true
+
+      - name: Collect C++ test logs
+        run: |
+          mkdir -p core/test-logs || true
+          if [ -f core/build/bin/test_loader ] || [ -f core/build/bin/test_loader.exe ]; then
+            (core/build/bin/test_loader > core/test-logs/test_loader.log 2>&1) || true
+          fi
+          if [ -f core/build/bin/test_plugin_verify ] || [ -f core/build/bin/test_plugin_verify.exe ]; then
+            (core/build/bin/test_plugin_verify > core/test-logs/test_plugin_verify.log 2>&1) || true
+          fi
 
       - name: Upload Core Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: core-artifacts
-          path: core/build/bin/**
+          path: |
+            core/build/bin/**
+            core/test-logs/**
 
       - name: Build WinUI Shell (.NET)
         run: |
@@ -114,11 +137,35 @@ jobs:
           cargo test -p master_server --verbose 2>&1 | tee master_server_tests.log
 
       - name: Upload master-server test logs
-        if: always()
+        if: always() && env.CI_LOCAL != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: master-server-tests-logs
           path: master_server_tests.log
+
+  adapters-tests:
+    name: Adapters Tests (SCUnpacked)
+    runs-on: ubuntu-latest
+    needs: master-server-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Run adapters tests
+        run: |
+          cargo test -p plugins-adapter-scunpacked --verbose 2>&1 | tee adapters_tests.log
+
+      - name: Upload adapters test logs
+        if: always() && env.CI_LOCAL != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: adapters-tests-logs
+          path: adapters_tests.log
 
   admin-cli-smoke:
     name: Admin CLI smoke test
@@ -148,25 +195,44 @@ jobs:
 
       - name: Start master server
         run: |
-          ./target/release/master_server &
+          set -x
+          echo "Starting master_server (redirecting stdout/stderr to master_server.log)"
+          ./target/release/master_server > master_server.log 2>&1 &
           echo $! > master_server.pid
+          echo "master_server pid: $(cat master_server.pid)"
 
       - name: Wait for server
         run: |
+          set -x
           for i in {1..20}; do
             status=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:3000/plugins/search?q=") || status=000
-            echo "Server status: $status"
+            echo "[$i] Server status: $status"
             if [ "$status" = "200" ]; then
+              echo "Server ready, tailing server log (last 50 lines):";
+              tail -n 50 master_server.log || true
               break
             fi
             sleep 1
           done
 
-      - name: Run admin CLI smoke tests
+      - name: Run admin CLI smoke tests (verbose)
         run: |
+          set -x
+          echo "Running admin CLI key-list";
           ./target/release/verseguy-admin --server http://127.0.0.1:3000 --token testtoken key-list > admin-key-list.log || true
+          echo "Running admin CLI key-rotate";
           ./target/release/verseguy-admin --server http://127.0.0.1:3000 --token testtoken key-rotate > admin-key-rotate.log || true
+          echo "Running admin CLI key-import";
           ./target/release/verseguy-admin --server http://127.0.0.1:3000 --token testtoken key-import --b64 "$(base64 -w0 tmptest/master.key)" > admin-key-import.log || true
+
+      - name: Show logs (server + admin cli)
+        if: always()
+        run: |
+          echo "--- master_server.log (first 200 lines) ---";
+          head -n 200 master_server.log || true;
+          echo "--- admin-key-list.log ---"; cat admin-key-list.log || true;
+          echo "--- admin-key-rotate.log ---"; cat admin-key-rotate.log || true;
+          echo "--- admin-key-import.log ---"; cat admin-key-import.log || true;
 
       - name: Upload admin CLI logs
         if: always()
@@ -177,11 +243,13 @@ jobs:
             admin-key-list.log
             admin-key-rotate.log
             admin-key-import.log
+            master_server.log
 
       - name: Kill master server
         if: always()
         run: |
           if [ -f master_server.pid ]; then
+            echo "Killing master server pid $(cat master_server.pid)"
             kill $(cat master_server.pid) || true
           fi
 

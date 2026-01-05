@@ -32,11 +32,14 @@ async fn verify_and_revoke_flow() {
     )
     .unwrap();
 
-    let pub_b64 = general_purpose::STANDARD.encode(state.keypair.as_ref().unwrap().public.to_bytes());
+    let pub_b64 =
+        general_purpose::STANDARD.encode(state.keypair.as_ref().unwrap().public.to_bytes());
 
     // POST /verify/plugin
     // Use published manifest for verification (store_manifest signed the published manifest)
-    let body = serde_json::json!({"manifest": manifest.with_published(), "public_key_b64": pub_b64}).to_string();
+    let body =
+        serde_json::json!({"manifest": manifest.with_published(), "public_key_b64": pub_b64})
+            .to_string();
     let req = Request::builder()
         .method("POST")
         .uri("/verify/plugin")
@@ -47,11 +50,13 @@ async fn verify_and_revoke_flow() {
     assert_eq!(resp.status(), StatusCode::OK);
     let bytes = body::to_bytes(resp.into_body(), 1024 * 1024).await.unwrap();
     let v: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-    assert_eq!(v.get("valid").unwrap().as_bool().unwrap(), true);
+    assert!(v.get("valid").unwrap().as_bool().unwrap());
 
     // Revoke via admin endpoint
     std::env::set_var("MASTER_ADMIN_TOKEN", "admintoken");
-    let revoke_body = serde_json::json!({"id": "org.test.signhttp", "version": "0.1.0", "reason": "compromised"}).to_string();
+    let revoke_body =
+        serde_json::json!({"id": "org.test.signhttp", "version": "0.1.0", "reason": "compromised"})
+            .to_string();
     let req2 = Request::builder()
         .method("POST")
         .uri("/verify/revoke")
@@ -70,7 +75,14 @@ async fn verify_and_revoke_flow() {
         .unwrap();
     let resp3 = app.oneshot(req3).await.unwrap();
     assert_eq!(resp3.status(), StatusCode::OK);
-    let bytes3 = body::to_bytes(resp3.into_body(), 1024 * 1024).await.unwrap();
+    let bytes3 = body::to_bytes(resp3.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
     let v3: serde_json::Value = serde_json::from_slice(&bytes3).unwrap();
-    assert!(v3.get("revocations").unwrap().as_array().unwrap().len() >= 1);
+    assert!(!v3
+        .get("revocations")
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .is_empty());
 }

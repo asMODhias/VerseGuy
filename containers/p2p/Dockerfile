@@ -1,6 +1,9 @@
-FROM rust:1.70-slim-bullseye AS builder
+FROM rust:1.78-slim-bullseye AS builder
 WORKDIR /usr/src/verseguy
 COPY . .
+# Install nightly toolchain with rustup to enable edition-2024 support
+RUN rustup toolchain install nightly && rustup default nightly
+RUN rustc --version && cargo --version
 RUN cd containers/p2p && cargo build --release
 
 FROM debian:bullseye-slim

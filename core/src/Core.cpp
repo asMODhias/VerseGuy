@@ -11,9 +11,12 @@ extern "C" __declspec(dllexport) void Initialize() {
 
 extern "C" __declspec(dllexport) int VerifyPluginManifest(const char* manifest_path, const char* sig_path, const char* pubkey_path) {
     try {
+        std::cout << "VerifyPluginManifest called with manifest=" << manifest_path << " sig=" << sig_path << " pub=" << pubkey_path << std::endl;
         bool ok = PluginLoader::verify_manifest_with_tool(manifest_path, sig_path, pubkey_path);
+        std::cout << "VerifyPluginManifest result: " << (ok ? "OK" : "FAIL") << std::endl;
         return ok ? 0 : 1;
     } catch (...) {
+        std::cerr << "VerifyPluginManifest: exception" << std::endl;
         return 2;
     }
 }

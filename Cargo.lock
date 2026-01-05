@@ -2529,7 +2529,6 @@ dependencies = [
  "chrono",
  "clap",
  "ed25519-dalek 1.0.1",
- "hyper 0.14.32",
  "rand 0.7.3",
  "reqwest",
  "serde",
@@ -3031,6 +3030,20 @@ name = "pkg-config"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
+
+[[package]]
+name = "plugins-adapter-scunpacked"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tracing",
+ "verseguy_storage",
+]
 
 [[package]]
 name = "plugins-adapters"

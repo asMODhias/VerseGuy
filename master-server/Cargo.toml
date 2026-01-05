@@ -22,7 +22,6 @@ verseguy_auth = { path = "../containers/auth" }
 verseguy_licensing = { path = "../containers/licensing" }
 verseguy_compliance = { path = "../containers/compliance" }
 verseguy_audit = { path = "../containers/audit" }
-hyper = { version = "0.14", features = ["server"] }
 
 # Ed25519 for plugin signing
 ed25519-dalek = "1.0"

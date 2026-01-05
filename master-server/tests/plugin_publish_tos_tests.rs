@@ -1,4 +1,4 @@
-use axum::body::{self, Body};
+use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use master_server::build_app;
 use master_server::plugins::PluginManifest;
@@ -35,7 +35,9 @@ async fn publish_requires_tos_when_user_header_present() {
     assert_eq!(resp.status(), StatusCode::FORBIDDEN);
 
     // Accept ToS for user
-    let tos_body = serde_json::json!({"user_id":"user-123","accepted_at": 1234567890, "version": "1.0.0"}).to_string();
+    let tos_body =
+        serde_json::json!({"user_id":"user-123","accepted_at": 1234567890, "version": "1.0.0"})
+            .to_string();
     let req2 = Request::builder()
         .method("POST")
         .uri("/auth/tos")

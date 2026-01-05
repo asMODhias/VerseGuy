@@ -160,7 +160,9 @@ pub async fn tos_get_handler(
     }
 }
 
-use crate::plugins::{search_manifests, store_manifest, PluginManifest, verify_manifest, revoke_manifest};
+use crate::plugins::{
+    revoke_manifest, search_manifests, store_manifest, verify_manifest, PluginManifest,
+};
 use axum::extract::Query;
 use base64::engine::general_purpose;
 use base64::Engine;
@@ -209,12 +211,18 @@ pub async fn admin_get_keys(
 }
 
 fn require_admin(headers: &axum::http::HeaderMap) -> Result<(), (axum::http::StatusCode, String)> {
+    tracing::info!("require_admin called");
     if let Ok(token) = std::env::var("MASTER_ADMIN_TOKEN") {
         let header_token = headers
             .get("x-admin-token")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
+        tracing::info!(
+            "admin header present: {}",
+            if header_token.is_empty() { "no" } else { "yes" }
+        );
         if header_token != token {
+            tracing::warn!("invalid admin token");
             return Err((
                 axum::http::StatusCode::FORBIDDEN,
                 "invalid admin token".to_string(),
@@ -222,6 +230,7 @@ fn require_admin(headers: &axum::http::HeaderMap) -> Result<(), (axum::http::Sta
         }
         Ok(())
     } else {
+        tracing::warn!("admin endpoints disabled (MASTER_ADMIN_TOKEN not set)");
         Err((
             axum::http::StatusCode::FORBIDDEN,
             "admin disabled".to_string(),
@@ -233,6 +242,7 @@ pub async fn admin_rotate_key(
     State(_state): State<Arc<AppState>>,
     req: axum::http::Request<axum::body::Body>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    tracing::info!("admin_rotate_key called");
     let headers = req.headers();
     require_admin(headers)?;
 
@@ -242,6 +252,7 @@ pub async fn admin_rotate_key(
             "no master key configured".to_string(),
         )
     })?;
+    tracing::info!("rotating key at path: {}", key_path);
     let kp = crate::keystore::rotate_key(std::path::Path::new(&key_path)).map_err(|e| {
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -249,6 +260,7 @@ pub async fn admin_rotate_key(
         )
     })?;
     let pk_b64 = general_purpose::STANDARD.encode(kp.public.to_bytes());
+    tracing::info!("rotation complete");
     Ok(Json(
         serde_json::json!({"ok": true, "public_key_b64": pk_b64}),
     ))
@@ -263,6 +275,7 @@ pub async fn admin_import_key(
     State(_state): State<Arc<AppState>>,
     req: axum::http::Request<axum::body::Body>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    tracing::info!("admin_import_key called");
     let headers = req.headers();
     require_admin(headers)?;
 
@@ -288,9 +301,11 @@ pub async fn admin_import_key(
             "no master key configured".to_string(),
         )
     })?;
+    tracing::info!("importing key into path: {}", key_path);
     let kp = crate::keystore::import_key_b64(std::path::Path::new(&key_path), &b.key_b64)
         .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("{}", e)))?;
     let pk_b64 = general_purpose::STANDARD.encode(kp.public.to_bytes());
+    tracing::info!("import complete");
     Ok(Json(
         serde_json::json!({"ok": true, "public_key_b64": pk_b64}),
     ))
@@ -305,9 +320,11 @@ pub async fn plugins_publish_handler(
     State(state): State<Arc<AppState>>,
     req: axum::http::Request<axum::body::Body>,
 ) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), (axum::http::StatusCode, String)> {
+    tracing::info!("plugins_publish_handler called");
     // If request contains x-user-id, ensure that user accepted latest ToS
     if let Some(uid_hdr) = req.headers().get("x-user-id") {
         if let Ok(uid) = uid_hdr.to_str() {
+            tracing::info!("publish request by user id present: {}", uid);
             let accepted = crate::legal::user_has_accepted_latest(&state, uid).map_err(|e| {
                 (
                     axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -315,6 +332,7 @@ pub async fn plugins_publish_handler(
                 )
             })?;
             if !accepted {
+                tracing::warn!("user {} must accept latest ToS", uid);
                 return Err((
                     axum::http::StatusCode::FORBIDDEN,
                     "user must accept latest ToS".to_string(),
@@ -330,7 +348,12 @@ pub async fn plugins_publish_handler(
             .get("x-plugin-token")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
+        tracing::info!(
+            "plugin publish token header present: {}",
+            if header_token.is_empty() { "no" } else { "yes" }
+        );
         if header_token != key {
+            tracing::warn!("Invalid plugin publish token provided");
             return Err((
                 axum::http::StatusCode::FORBIDDEN,
                 "Invalid plugin publish token".to_string(),
@@ -355,15 +378,22 @@ pub async fn plugins_publish_handler(
     })?;
 
     let manifest = req_json.manifest.with_published();
+    tracing::info!("Publishing manifest {}:{}", manifest.id, manifest.version);
 
     // Sign the manifest with master server keypair if available
     let kp_opt = state.keypair.as_ref();
+    if kp_opt.is_some() {
+        tracing::info!("Signing manifest with master keypair");
+    } else {
+        tracing::warn!("No master keypair configured; storing unsigned manifest");
+    }
     store_manifest(&state.storage, &manifest, kp_opt).map_err(|e| {
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             format!("{}", e),
         )
     })?;
+    tracing::info!("Manifest stored");
     Ok((
         axum::http::StatusCode::CREATED,
         Json(serde_json::json!({"ok": true, "manifest": manifest})),
@@ -389,15 +419,34 @@ pub async fn verify_plugin_handler(
     // parse public key
     let pub_bytes = general_purpose::STANDARD
         .decode(req.public_key_b64.trim())
-        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid pubkey: {}", e)))?;
-    let pubk = ed25519_dalek::PublicKey::from_bytes(&pub_bytes)
-        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid pubkey: {}", e)))?;
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                format!("invalid pubkey: {}", e),
+            )
+        })?;
+    let pubk = ed25519_dalek::PublicKey::from_bytes(&pub_bytes).map_err(|e| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            format!("invalid pubkey: {}", e),
+        )
+    })?;
 
-    let valid = verify_manifest(&state.storage, &req.manifest, &pubk)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let valid = verify_manifest(&state.storage, &req.manifest, &pubk).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}", e),
+        )
+    })?;
 
-    let revoked = crate::plugins::is_revoked(&state.storage, &req.manifest.id, &req.manifest.version)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let revoked =
+        crate::plugins::is_revoked(&state.storage, &req.manifest.id, &req.manifest.version)
+            .map_err(|e| {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("{}", e),
+                )
+            })?;
 
     Ok(Json(VerifyPluginResponse { valid, revoked }))
 }
@@ -418,12 +467,25 @@ pub async fn revoke_handler(
 
     let bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024)
         .await
-        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("failed to read body: {}", e)))?;
-    let r: RevokeRequest = serde_json::from_slice(&bytes)
-        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid json: {}", e)))?;
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                format!("failed to read body: {}", e),
+            )
+        })?;
+    let r: RevokeRequest = serde_json::from_slice(&bytes).map_err(|e| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            format!("invalid json: {}", e),
+        )
+    })?;
 
-    revoke_manifest(&state.storage, &r.id, &r.version, &r.reason)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    revoke_manifest(&state.storage, &r.id, &r.version, &r.reason).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}", e),
+        )
+    })?;
 
     Ok(Json(serde_json::json!({"ok": true})))
 }
@@ -431,10 +493,13 @@ pub async fn revoke_handler(
 pub async fn revocations_list_handler(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    let items: Vec<serde_json::Value> = state
-        .storage
-        .prefix_scan(b"plugin_revoked:")
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let items: Vec<serde_json::Value> =
+        state.storage.prefix_scan(b"plugin_revoked:").map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("{}", e),
+            )
+        })?;
     Ok(Json(serde_json::json!({"revocations": items})))
 }
 
@@ -445,9 +510,12 @@ pub async fn audit_export_handler(
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     // Use AuditService from containers/audit
     let audit_service = verseguy_audit::AuditService::new(state.storage.clone());
-    let items = audit_service
-        .export_for_user(&user_id)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let items = audit_service.export_for_user(&user_id).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}", e),
+        )
+    })?;
     Ok(Json(serde_json::json!({"entries": items})))
 }
 
@@ -461,27 +529,43 @@ pub async fn user_data_delete_handler(
     let mut deleted = 0usize;
     match state.storage.prefix_delete(tos_prefix.as_bytes()) {
         Ok(n) => deleted += n,
-        Err(e) => return Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("failed deleting tos: {}", e))),
+        Err(e) => {
+            return Err((
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed deleting tos: {}", e),
+            ))
+        }
     }
     // delete latest tos pointer
     let latest_key = format!("tos:latest:{}", user_id);
     if let Err(e) = state.storage.delete(latest_key.as_bytes()) {
         // ignore not found, but return error on other errors
         // RocksDB delete returns Ok even if missing, so just count
-        return Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("failed deleting tos latest: {}", e)));
+        return Err((
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("failed deleting tos latest: {}", e),
+        ));
     }
 
     // Delete audit entries by scanning all audits and deleting those matching user_id
     let audit_items: Vec<verseguy_audit::AuditEntry> = match state.storage.prefix_scan(b"audit:") {
         Ok(v) => v,
-        Err(e) => return Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("failed scanning audits: {}", e))),
+        Err(e) => {
+            return Err((
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed scanning audits: {}", e),
+            ))
+        }
     };
     let mut audit_deleted = 0usize;
     for a in audit_items {
         if a.user_id.as_deref() == Some(&user_id) {
             let key = format!("audit:{}", a.id);
             if let Err(e) = state.storage.delete(key.as_bytes()) {
-                return Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("failed deleting audit {}: {}", a.id, e)));
+                return Err((
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("failed deleting audit {}: {}", a.id, e),
+                ));
             }
             audit_deleted += 1;
         }

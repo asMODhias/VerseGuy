@@ -1,13 +1,12 @@
 use crate::state::AppState;
-use axum::{extract::State, Json};
 use anyhow::Result;
+use axum::body::Body;
+use axum::http::Request;
+use axum::{extract::State, Json};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
-use axum::http::Request;
-use axum::body::Body;
-
 
 #[derive(Deserialize)]
 pub struct AdminCreateLegalRequest {
@@ -70,21 +69,39 @@ pub async fn admin_create_legal_handler(
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
         if header_token != token {
-            return Err((axum::http::StatusCode::FORBIDDEN, "invalid admin token".to_string()));
+            return Err((
+                axum::http::StatusCode::FORBIDDEN,
+                "invalid admin token".to_string(),
+            ));
         }
     } else {
-        return Err((axum::http::StatusCode::FORBIDDEN, "admin disabled".to_string()));
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            "admin disabled".to_string(),
+        ));
     }
 
     // read body
     let bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024)
         .await
-        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("failed to read body: {}", e)))?;
-    let req_json: AdminCreateLegalRequest = serde_json::from_slice(&bytes)
-        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid json: {}", e)))?;
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                format!("failed to read body: {}", e),
+            )
+        })?;
+    let req_json: AdminCreateLegalRequest = serde_json::from_slice(&bytes).map_err(|e| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            format!("invalid json: {}", e),
+        )
+    })?;
 
     if req_json.doc_type.trim().is_empty() || req_json.version.trim().is_empty() {
-        return Err((axum::http::StatusCode::BAD_REQUEST, "doc_type and version required".to_string()));
+        return Err((
+            axum::http::StatusCode::BAD_REQUEST,
+            "doc_type and version required".to_string(),
+        ));
     }
 
     let id = Uuid::new_v4().to_string();
@@ -101,17 +118,21 @@ pub async fn admin_create_legal_handler(
     };
 
     let k = key_for_doc(&doc.doc_type, &doc.version);
-    state
-        .storage
-        .put(k.as_bytes(), &doc)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("storage error: {}", e)))?;
+    state.storage.put(k.as_bytes(), &doc).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("storage error: {}", e),
+        )
+    })?;
 
     // also update latest mapping
     let latest_k = key_latest(&doc.doc_type);
-    state
-        .storage
-        .put(latest_k.as_bytes(), &doc)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("storage error: {}", e)))?;
+    state.storage.put(latest_k.as_bytes(), &doc).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("storage error: {}", e),
+        )
+    })?;
 
     Ok(Json(serde_json::json!({"ok": true, "id": id, "doc": doc})))
 }
@@ -129,28 +150,41 @@ pub async fn admin_get_legal_handler(
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
         if header_token != token {
-            return Err((axum::http::StatusCode::FORBIDDEN, "invalid admin token".to_string()));
+            return Err((
+                axum::http::StatusCode::FORBIDDEN,
+                "invalid admin token".to_string(),
+            ));
         }
     } else {
-        return Err((axum::http::StatusCode::FORBIDDEN, "admin disabled".to_string()));
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            "admin disabled".to_string(),
+        ));
     }
 
     // naive scan for key with id
     let id = req
         .uri()
         .path()
-        .rsplit('/').next().unwrap_or("")
+        .rsplit('/')
+        .next()
+        .unwrap_or("")
         .to_string();
-    let items: Vec<LegalDocument> = state
-        .storage
-        .prefix_scan(b"legal:doc:")
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("storage: {}", e)))?;
+    let items: Vec<LegalDocument> = state.storage.prefix_scan(b"legal:doc:").map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("storage: {}", e),
+        )
+    })?;
     for it in items {
         if it.id == id {
-            return Ok(Json(serde_json::json!({"doc": it})))
+            return Ok(Json(serde_json::json!({"doc": it})));
         }
     }
-    Err((axum::http::StatusCode::NOT_FOUND, "document not found".to_string()))
+    Err((
+        axum::http::StatusCode::NOT_FOUND,
+        "document not found".to_string(),
+    ))
 }
 
 // Admin: list docs (by type optional)
@@ -166,16 +200,24 @@ pub async fn admin_list_legal_handler(
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
         if header_token != token {
-            return Err((axum::http::StatusCode::FORBIDDEN, "invalid admin token".to_string()));
+            return Err((
+                axum::http::StatusCode::FORBIDDEN,
+                "invalid admin token".to_string(),
+            ));
         }
     } else {
-        return Err((axum::http::StatusCode::FORBIDDEN, "admin disabled".to_string()));
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            "admin disabled".to_string(),
+        ));
     }
 
-    let items: Vec<LegalDocument> = state
-        .storage
-        .prefix_scan(b"legal:doc:")
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("storage: {}", e)))?;
+    let items: Vec<LegalDocument> = state.storage.prefix_scan(b"legal:doc:").map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("storage: {}", e),
+        )
+    })?;
     Ok(Json(serde_json::json!({"documents": items})))
 }
 
@@ -197,18 +239,33 @@ pub async fn admin_revoke_legal_handler(
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
         if header_token != token {
-            return Err((axum::http::StatusCode::FORBIDDEN, "invalid admin token".to_string()));
+            return Err((
+                axum::http::StatusCode::FORBIDDEN,
+                "invalid admin token".to_string(),
+            ));
         }
     } else {
-        return Err((axum::http::StatusCode::FORBIDDEN, "admin disabled".to_string()));
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            "admin disabled".to_string(),
+        ));
     }
 
     // read body
     let bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024)
         .await
-        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("failed to read body: {}", e)))?;
-    let r: RevokeReq = serde_json::from_slice(&bytes)
-        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid json: {}", e)))?;
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                format!("failed to read body: {}", e),
+            )
+        })?;
+    let r: RevokeReq = serde_json::from_slice(&bytes).map_err(|e| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            format!("invalid json: {}", e),
+        )
+    })?;
 
     // create revocation record
     let rev = Revocation {
@@ -219,10 +276,12 @@ pub async fn admin_revoke_legal_handler(
         revoked_at: Utc::now().timestamp(),
     };
     let k = key_revoked(&r.id);
-    state
-        .storage
-        .put(k.as_bytes(), &rev)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("storage: {}", e)))?;
+    state.storage.put(k.as_bytes(), &rev).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("storage: {}", e),
+        )
+    })?;
     Ok(Json(serde_json::json!({"ok": true})))
 }
 
@@ -232,10 +291,12 @@ pub async fn get_latest_legal_handler(
     axum::extract::Path(doc_type): axum::extract::Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     let k = key_latest(&doc_type);
-    let rec: Option<LegalDocument> = state
-        .storage
-        .get(k.as_bytes())
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("storage: {}", e)))?;
+    let rec: Option<LegalDocument> = state.storage.get(k.as_bytes()).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("storage: {}", e),
+        )
+    })?;
     if let Some(r) = rec {
         Ok(Json(serde_json::json!({"doc": r})))
     } else {
@@ -260,10 +321,12 @@ pub async fn get_legal_version_handler(
     axum::extract::Path((doc_type, version)): axum::extract::Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     let k = key_for_doc(&doc_type, &version);
-    let rec: Option<LegalDocument> = state
-        .storage
-        .get(k.as_bytes())
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("storage: {}", e)))?;
+    let rec: Option<LegalDocument> = state.storage.get(k.as_bytes()).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("storage: {}", e),
+        )
+    })?;
     if let Some(r) = rec {
         Ok(Json(serde_json::json!({"doc": r})))
     } else {
