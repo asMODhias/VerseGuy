@@ -3037,6 +3037,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "quick-xml",
  "reqwest",
  "serde",
  "serde_json",
@@ -3229,6 +3230,15 @@ dependencies = [
  "quick-protobuf",
  "thiserror 1.0.69",
  "unsigned-varint 0.8.0",
+]
+
+[[package]]
+name = "quick-xml"
+version = "0.27.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffc053f057dd768a56f62cd7e434c42c831d296968997e9ac1f76ea7c2d14c41"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]

@@ -16,3 +16,7 @@ core/bin/
 # Logs and temp
 *.log
 tmp/
+
+# Persistent data for adapters
+/data/scunpacked/db/
+
