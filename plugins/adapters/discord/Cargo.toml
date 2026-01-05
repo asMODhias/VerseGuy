@@ -1,0 +1,12 @@
+[package]
+name = "plugins-adapter-discord"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "plugins_adapter_discord"
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }

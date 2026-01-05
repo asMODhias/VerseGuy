@@ -1,3 +1,43 @@
+# Verse Guy v2.0
+
+**Star Citizen Organization & Fleet Management**
+
+## Status
+
+🚧 **In Active Development** 🚧
+
+Current Phase: Core Implementation (Week 1-2)
+
+## Architecture
+
+- **Core:** C++ DLL (minimal bootstrap)
+- **Containers:** Rust DLLs (infrastructure)
+- **Plugins:** Rust DLLs (features)
+- **UI:** WinUI 3 + React
+
+## Build
+
+```bash
+# Build everything
+./scripts/build.sh
+
+# Run tests
+./scripts/test.sh
+
+# Development mode
+./scripts/dev.sh
+```
+
+## Documentation
+
+See `docs/` directory for complete documentation.
+
+## License
+
+MIT License - See LICENSE file
+
+---
+
 # VerseguY — Master Server & Tools
 
 Kurzbeschreibung: Dieses Repository enthält die Master-Server-Implementation, Auth/Storage-Container, C++ Core, UI-Shell und Dev/CI-Skripte für das VerseguY Projekt.
