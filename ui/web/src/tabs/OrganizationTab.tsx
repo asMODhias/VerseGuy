@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import MemberList from '../components/MemberList'
 import RankManagement from '../components/RankManagement'
 import OrganizationList from '../components/OrganizationList'
+import LicenseGuard from '../components/LicenseGuard'
 import { listOrgs } from '../api/organizations'
 
 export default function OrganizationTab() {

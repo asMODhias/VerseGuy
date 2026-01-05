@@ -1,0 +1,69 @@
+name: Release (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Ensure Windows App SDK is installed
+        shell: pwsh
+        run: |
+          Write-Host "Checking for Windows App SDK..."
+          $ok = $false
+          if (Get-Command winget -ErrorAction SilentlyContinue) {
+            Write-Host "Trying winget install Microsoft.WindowsAppSDK.1.4..."
+            winget install --id Microsoft.WindowsAppSDK.1.4 -e --accept-package-agreements --accept-source-agreements -h | Out-Null || \
+            (Write-Host "Trying winget install Windows App Runtime 1.2 as fallback..."; winget install --id Microsoft.WindowsAppRuntime.1.2 -e --accept-package-agreements --accept-source-agreements -h | Out-Null) && $ok = $true
+          }
+          if (-not $ok -and (Get-Command choco -ErrorAction SilentlyContinue)) {
+            Write-Host "Trying chocolatey install..."
+            choco install microsoft-windows-appsdk -y | Out-Null && $ok = $true
+          }
+          if (-not $ok) {
+            Write-Error "Could not install Windows App SDK via winget or choco. Native UI build may fail; aborting to surface the error in CI." ; exit 1
+          }
+
+      - name: Verify .NET and Windows App SDK
+        shell: pwsh
+        run: |
+          dotnet --info
+          # Confirm presence of Windows App SDK targeting pack if possible
+          if (-not (Test-Path "C:\Program Files\WindowsAppSDK")) { Write-Warning "Windows App SDK directory not found; native build may still fail." }
+
+      - name: Restore & Build (PowerShell wrapper)
+        shell: pwsh
+        run: |
+          ./scripts/build.sh
+
+      - name: Run tests
+        shell: pwsh
+        run: |
+          ./scripts/test.sh
+
+      - name: Create release artifacts
+        shell: pwsh
+        run: |
+          ./scripts/release.sh
+
+      - name: Upload release as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: verseguy-release
+          path: release/verseguy-v2.0.0

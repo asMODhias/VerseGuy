@@ -3,7 +3,7 @@ use rocksdb::{DB, Options, IteratorMode};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 /// RocksDB storage wrapper
 #[derive(Clone)]

@@ -4,7 +4,7 @@ use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use verseguy_auth::local::LocalAuth;
-use verseguy_auth::session::SessionService;
+use verseguy_auth::SessionManager;
 use verseguy_licensing::validate_license;
 
 #[derive(Deserialize)]
@@ -55,9 +55,9 @@ pub async fn login_handler(
         .await
         .map_err(|e| (axum::http::StatusCode::UNAUTHORIZED, format!("{}", e)))?;
 
-    let session_service = SessionService::new(state.license_secret.clone());
-    let token = session_service
-        .create_and_store_session(&user.id, &user.license, 30, &state.storage)
+    let session_manager = SessionManager::new(state.license_secret.clone(), (*state.storage).clone());
+    let token = session_manager
+        .create_session(user.id.clone(), user.license)
         .map_err(|e| {
             (
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -285,11 +285,10 @@ pub async fn plugins_publish_handler(
 }
 
 // --- Organization endpoints ---
-use plugins_base_organization::service::OrganizationService;
-use plugins_base_organization::types::Organization as OrgType;
+use verseguy_plugin_organization::service::OrganizationService;
+use verseguy_plugin_organization::types::Organization as OrgType;
 use axum::extract::Path;
 use axum::http::StatusCode;
-use uuid::Uuid;
 
 #[derive(Serialize)]
 pub struct OrgListResponse {
@@ -317,15 +316,9 @@ pub async fn orgs_create_handler(
     Json(req): Json<CreateOrgRequest>,
 ) -> Result<Json<OrgType>, (axum::http::StatusCode, String)> {
     let svc = OrganizationService::new((*state.storage).clone());
-    let org = OrgType {
-        id: Uuid::new_v4().to_string(),
-        name: req.name,
-        tag: req.tag,
-        member_count: 0,
-    };
-    svc.create_org(&org)
+    let created = svc.create_organization(req.name, req.tag, "".into(), "system".into())
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
-    Ok(Json(org))
+    Ok(Json(created))
 }
 
 pub async fn orgs_get_handler(
@@ -333,6 +326,6 @@ pub async fn orgs_get_handler(
     Path(id): Path<String>,
 ) -> Result<Json<Option<OrgType>>, (axum::http::StatusCode, String)> {
     let svc = OrganizationService::new((*state.storage).clone());
-    let org = svc.get_org(&id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let org = svc.get_organization(&id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
     Ok(Json(org))
 }

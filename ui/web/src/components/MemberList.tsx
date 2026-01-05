@@ -1,5 +1,6 @@
 import React from 'react'
 
+<<<<<<< Updated upstream
 export type Member = {
   id: string
   name: string
@@ -40,6 +41,13 @@ export default function MemberList({ members }: Props) {
           </tbody>
         </table>
       )}
+=======
+export default function MemberList({ members }: { members: any[] }) {
+  return (
+    <div>
+      <h3>Members</h3>
+      <p style={{ color: 'var(--muted)' }}>Member list placeholder ({members.length})</p>
+>>>>>>> Stashed changes
     </div>
   )
 }

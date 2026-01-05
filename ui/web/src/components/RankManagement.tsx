@@ -1,5 +1,6 @@
 import React from 'react'
 
+<<<<<<< Updated upstream
 export type Rank = {
   id: string
   name: string
@@ -31,6 +32,13 @@ export default function RankManagement({ ranks }: Props) {
           ))}
         </ul>
       )}
+=======
+export default function RankManagement({ ranks }: { ranks: any[] }) {
+  return (
+    <div>
+      <h3>Rank Management</h3>
+      <p style={{ color: 'var(--muted)' }}>Rank management placeholder ({ranks.length})</p>
+>>>>>>> Stashed changes
     </div>
   )
 }

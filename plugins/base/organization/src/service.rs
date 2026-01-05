@@ -1,62 +1,114 @@
 use anyhow::{Context, Result};
-use crate::types::{Member, Organization};
-use verseguy_storage::RocksDBStorage;
-use serde::{Serialize, Deserialize};
+use chrono::Utc;
+use tracing::info;
+use uuid::Uuid;
+use crate::types::{Member, Organization, Permission, Rank};
+use verseguy_storage::{Storage, schema::keys};
 
 pub struct OrganizationService {
-    storage: RocksDBStorage,
+    storage: Storage,
 }
 
 impl OrganizationService {
-    pub fn new(storage: RocksDBStorage) -> Self {
+    pub fn new(storage: Storage) -> Self {
         Self { storage }
     }
-
-    pub fn create_org(&self, org: &Organization) -> Result<()> {
-        let key = format!("org:{}", org.id);
-        self.storage.put(key.as_bytes(), org).context("Failed to put org")?;
-        Ok(())
-    }
-
-    pub fn get_org(&self, id: &str) -> Result<Option<Organization>> {
-        let key = format!("org:{}", id);
-        let org: Option<Organization> = self.storage.get(key.as_bytes()).context("Failed to get org")?;
+    
+    // ===========================================================================
+    // ORGANIZATION MANAGEMENT
+    // ===========================================================================
+    
+    /// Create new organization
+    pub fn create_organization(
+        &self,
+        name: String,
+        tag: String,
+        description: String,
+        owner_id: String,
+    ) -> Result<Organization> {
+        info!("Creating organization: {} [{}]", name, tag);
+        
+        // Validate
+        if name.len() < 3 || name.len() > 64 {
+            anyhow::bail!("Organization name must be 3-64 characters");
+        }
+        if tag.len() < 2 || tag.len() > 5 {
+            anyhow::bail!("Organization tag must be 2-5 characters");
+        }
+        
+        // Check if name exists
+        let existing: Option<String> = self.storage
+            .get(keys::organization_by_name(&name))
+            .context("Failed to check existing organization")?;
+        
+        if existing.is_some() {
+            anyhow::bail!("Organization name already exists");
+        }
+        
+        // Create
+        let id = Uuid::new_v4().to_string();
+        let now = Utc::now();
+        let org = Organization {
+            id: id.clone(),
+            name: name.clone(),
+            tag: tag.clone(),
+            description: description.clone(),
+            founded: now,
+            owner_id: owner_id.clone(),
+            member_count: 1,
+            created_at: now,
+            updated_at: now,
+        };
+        
+        // Store
+        self.storage.put(keys::organization(&id), &org).context("Failed to save org")?;
+        self.storage.put(keys::organization_by_name(&name), &id).context("Failed to save name index")?;
+        
         Ok(org)
     }
+    
+    pub fn get_organization(&self, id: &str) -> Result<Option<Organization>> {
+        let org_opt: Option<Organization> = self.storage.get(keys::organization(id)).context("Failed to get organization")?;
+        Ok(org_opt)
+    }
 
-    pub fn delete_org(&self, id: &str) -> Result<()> {
-        let key = format!("org:{}", id);
-        self.storage.delete(key.as_bytes()).context("Failed to delete org")?;
+    pub fn delete_organization(&self, id: &str) -> Result<()> {
+        self.storage.delete(keys::organization(id)).context("Failed to delete organization")?;
         Ok(())
+    }
+    
+    pub fn add_member(&self, member: Member) -> Result<()> {
+        // Validate
+        if member.handle.len() < 3 { anyhow::bail!("Handle too short"); }
+        
+        self.storage.put(keys::member(&member.org_id, &member.user_id), &member).context("Failed to add member")?;
+        Ok(())
+    }
+    
+    pub fn list_members(&self, org_id: &str) -> Result<Vec<Member>> {
+        let results: Vec<Member> = self.storage.prefix_scan(keys::members_prefix(org_id)).context("Failed to scan members")?;
+        Ok(results)
+    }
+    
+    pub fn has_permission(&self, user_id: &str, perm: Permission) -> Result<bool> {
+        // Simplified: check if any rank assigned to user includes the permission
+        // Scan all members under the root member prefix
+        let members: Vec<Member> = self.storage.prefix_scan(b"member:")?;
+        for m in members {
+            if m.user_id == user_id {
+                // load rank for this org
+                let rank_opt: Option<Rank> = self.storage.get(keys::rank(&m.org_id, &m.rank_id))?;
+                if let Some(rank) = rank_opt {
+                    return Ok(rank.permissions.contains(&perm));
+                }
+            }
+        }
+        Ok(false)
     }
 
     pub fn list_orgs_prefix(&self, prefix: &str) -> Result<Vec<Organization>> {
-        let key_prefix = format!("org:{}", prefix);
-        let results: Vec<Organization> = self.storage.prefix_scan(key_prefix.as_bytes()).context("Failed to scan orgs")?;
-        Ok(results)
-    }
-
-    pub fn add_member(&self, member: &Member) -> Result<()> {
-        let key = format!("member:{}", member.id);
-        self.storage.put(key.as_bytes(), member).context("Failed to put member")?;
-        Ok(())
-    }
-
-    pub fn get_member(&self, id: &str) -> Result<Option<Member>> {
-        let key = format!("member:{}", id);
-        let m: Option<Member> = self.storage.get(key.as_bytes()).context("Failed to get member")?;
-        Ok(m)
-    }
-
-    pub fn list_members_by_org(&self, org_id: &str) -> Result<Vec<Member>> {
-        let key_prefix = format!("member:org:{}:", org_id);
-        let results: Vec<Member> = self.storage.prefix_scan(key_prefix.as_bytes()).context("Failed to scan members")?;
-        Ok(results)
-    }
-
-    pub fn remove_member(&self, id: &str) -> Result<()> {
-        let key = format!("member:{}", id);
-        self.storage.delete(key.as_bytes()).context("Failed to delete member")?;
-        Ok(())
+        // Use organization's key prefix to scan for organizations matching prefix (empty string for all)
+        let out: Vec<Organization> = self.storage.prefix_scan(keys::organization(prefix)).context("Failed to list organizations")?;
+        Ok(out)
     }
 }

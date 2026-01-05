@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import { useState, useEffect, useCallback } from 'react'
 import { login as apiLogin, refreshToken as apiRefreshToken, AuthSession } from '../api/auth'
 
@@ -83,3 +84,14 @@ export function useAuth() {
 }
 
 export default useAuth
+=======
+import { useState } from 'react'
+
+export type LicenseKind = 'Community' | 'Pro' | 'Enterprise'
+
+export function useAuth() {
+  // Minimal stub for build & e2e; in real app this will connect to auth context
+  const [license] = useState<LicenseKind>('Pro')
+  return { license }
+}
+>>>>>>> Stashed changes

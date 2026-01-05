@@ -108,23 +108,35 @@ pub extern "C" fn PluginInit() -> *mut IPlugin {
 
 #[cfg(test)]
 mod tests {
-    use super::types::{Member, Organization};
+    use super::types::{Member, Organization, Rank, Permission};
+    use chrono::Utc;
 
     #[test]
     fn types_roundtrip() {
+        let now = Utc::now();
         let org = Organization {
             id: "org1".into(),
             name: "Org".into(),
             tag: "ORG".into(),
+            description: "desc".into(),
+            founded: now,
+            owner_id: "owner".into(),
             member_count: 5,
+            created_at: now,
+            updated_at: now,
         };
         let mem = Member {
             id: "m1".into(),
             org_id: "org1".into(),
+            user_id: "u1".into(),
             handle: "bob".into(),
             rank_id: "r1".into(),
+            joined_at: now,
+            notes: None,
         };
+        let rank = Rank { id: "r1".into(), org_id: "org1".into(), name: "Admin".into(), level: 10, permissions: vec![Permission::ManageMembers], created_at: now };
         assert_eq!(org.id, "org1");
         assert_eq!(mem.org_id, "org1");
+        assert_eq!(rank.org_id, "org1");
     }
 }

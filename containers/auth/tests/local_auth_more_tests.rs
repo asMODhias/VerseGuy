@@ -1,5 +1,4 @@
 use verseguy_auth::local::LocalAuth;
-use verseguy_auth::License;
 use tempfile::TempDir;
 use verseguy_storage::RocksDBStorage;
 

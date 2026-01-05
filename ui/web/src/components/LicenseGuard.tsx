@@ -1,4 +1,5 @@
 import React from 'react'
+<<<<<<< Updated upstream
 import useAuth, { License } from '../hooks/useAuth'
 
 const levels: Record<License, number> = {
@@ -28,4 +29,13 @@ export default function LicenseGuard({ required, children, renderUpgrade }: Prop
       <button style={{ background: 'var(--accent)', color: '#00121a', border: 'none', padding: '6px 10px', borderRadius: 6 }}>Upgrade to {required}</button>
     </div>
   )
+=======
+
+export default function LicenseGuard({ required, children, renderUpgrade }: { required: string; children?: React.ReactNode; renderUpgrade?: () => React.ReactNode }) {
+  // For now use a stubbed license; replace with proper auth context later
+  const license: string = 'Pro'
+  const allowed = license === required || license === 'Enterprise' || (required === 'Pro' && license === 'Pro')
+  if (allowed) return <>{children}</>
+  return <>{renderUpgrade ? renderUpgrade() : null}</>
+>>>>>>> Stashed changes
 }
