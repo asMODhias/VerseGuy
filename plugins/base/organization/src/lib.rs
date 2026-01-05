@@ -1,7 +1,10 @@
 pub mod types;
+pub mod service;
 
 use std::ffi::CString;
 use std::os::raw::{c_char, c_void};
+
+pub use service::OrganizationService;
 
 pub fn example() -> String {
     "organization plugin loaded".to_string()

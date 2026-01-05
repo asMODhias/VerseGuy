@@ -3060,7 +3060,10 @@ dependencies = [
 name = "plugins-base-organization"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "serde",
+ "tempfile",
+ "verseguy_storage",
 ]
 
 [[package]]
