@@ -20,6 +20,8 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .route("/license/validate", post(routes::license_validate_handler))
         .route("/plugins/search", get(routes::plugins_search_handler))
         .route("/plugins/publish", post(routes::plugins_publish_handler))
+        .route("/v1/orgs", get(routes::orgs_list_handler).post(routes::orgs_create_handler))
+        .route("/v1/orgs/{id}", get(routes::orgs_get_handler))
         .route("/admin/keys", get(routes::admin_get_keys))
         .route("/admin/keys/rotate", post(routes::admin_rotate_key))
         .route("/admin/keys/import", post(routes::admin_import_key))

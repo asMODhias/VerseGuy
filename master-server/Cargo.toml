@@ -20,6 +20,7 @@ chrono = { version = "0.4", features = ["serde"] }
 verseguy_storage = { path = "../containers/storage" }
 verseguy_auth = { path = "../containers/auth" }
 verseguy_licensing = { path = "../containers/licensing" }
+plugins-base-organization = { path = "../plugins/base/organization" }
 hyper = { version = "0.14", features = ["server"] }
 
 # Ed25519 for plugin signing
@@ -27,6 +28,7 @@ ed25519-dalek = "1.0"
 base64 = "0.21"
 rand = "0.7"
 clap = { version = "4", features = ["derive"] }
+uuid = { version = "1", features = ["v4"] }
 
 [features]
 run-server = []

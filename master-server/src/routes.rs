@@ -283,3 +283,56 @@ pub async fn plugins_publish_handler(
         Json(serde_json::json!({"ok": true, "manifest": manifest})),
     ))
 }
+
+// --- Organization endpoints ---
+use plugins_base_organization::service::OrganizationService;
+use plugins_base_organization::types::Organization as OrgType;
+use axum::extract::Path;
+use axum::http::StatusCode;
+use uuid::Uuid;
+
+#[derive(Serialize)]
+pub struct OrgListResponse {
+    pub orgs: Vec<OrgType>,
+}
+
+pub async fn orgs_list_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<OrgListResponse>, (axum::http::StatusCode, String)> {
+    let svc = OrganizationService::new((*state.storage).clone());
+    let orgs = svc
+        .list_orgs_prefix("")
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(OrgListResponse { orgs }))
+}
+
+#[derive(Deserialize)]
+pub struct CreateOrgRequest {
+    pub name: String,
+    pub tag: String,
+}
+
+pub async fn orgs_create_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<CreateOrgRequest>,
+) -> Result<Json<OrgType>, (axum::http::StatusCode, String)> {
+    let svc = OrganizationService::new((*state.storage).clone());
+    let org = OrgType {
+        id: Uuid::new_v4().to_string(),
+        name: req.name,
+        tag: req.tag,
+        member_count: 0,
+    };
+    svc.create_org(&org)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(org))
+}
+
+pub async fn orgs_get_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<Option<OrgType>>, (axum::http::StatusCode, String)> {
+    let svc = OrganizationService::new((*state.storage).clone());
+    let org = svc.get_org(&id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(org))
+}
