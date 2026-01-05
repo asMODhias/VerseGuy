@@ -2,7 +2,7 @@ use anyhow::Result;
 use tempfile::TempDir;
 use verseguy_auth::{LocalAuth, SessionManager};
 use verseguy_storage::Storage;
-use verseguy_plugin_organization::service::OrganizationService;
+use plugins_base_organization::service::OrganizationService;
 use verseguy_plugin_fleet::service::FleetService;
 use verseguy_plugin_operations::OperationsService;
 

@@ -88,7 +88,7 @@ extern "C" fn shutdown_impl(_instance: *mut c_void) {
     // no-op for now
 }
 
-#[no_mangle]
+#[unsafe(export_name = "PluginInit")]
 pub extern "C" fn PluginInit() -> *mut IPlugin {
     let plugin = Box::new(FleetPlugin::new());
     let instance_ptr = Box::into_raw(plugin) as *mut c_void;

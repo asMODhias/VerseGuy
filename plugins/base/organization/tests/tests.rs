@@ -1,8 +1,8 @@
 use tempfile::tempdir;
 use verseguy_storage::Storage;
 use verseguy_storage::schema::keys;
-use verseguy_plugin_organization::service::OrganizationService;
-use verseguy_plugin_organization::types::{Member, Permission, Rank};
+use plugins_base_organization::service::OrganizationService;
+use plugins_base_organization::types::{Member, Permission, Rank};
 use chrono::Utc;
 use uuid::Uuid;
 

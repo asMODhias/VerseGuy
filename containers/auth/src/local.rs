@@ -45,12 +45,15 @@ impl LocalAuth {
         let user = User {
             id: Uuid::new_v4().to_string(),
             username: username.clone(),
+            email: None,
+            password_hash: Some(password_hash.clone()),
             auth_method: AuthMethod::Local {
                 username: username.clone(),
                 password_hash: password_hash.clone(),
             },
             license: License::Free,
             created_at: Utc::now(),
+            updated_at: Utc::now(),
         };
 
         // Save

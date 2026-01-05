@@ -8,8 +8,8 @@ anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
-verseguy-storage = { path = "../storage" }
-verseguy-auth = { path = "../auth" }
+verseguy_storage = { path = "../storage" }
+verseguy_auth = { path = "../auth" }
 
 [dev-dependencies]
 tempfile = "3.5"

@@ -15,7 +15,7 @@ fn export_and_delete_user_data() {
         username: "tester".to_string(),
         email: None,
         password_hash: Some("h".to_string()),
-        auth_method: AuthMethod::Local { username: "tester".to_string() },
+        auth_method: AuthMethod::Local { username: "tester".to_string(), password_hash: "h".to_string() },
         license: License::Free,
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),

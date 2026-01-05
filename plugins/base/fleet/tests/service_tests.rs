@@ -1,7 +1,7 @@
 use tempfile::TempDir;
 use verseguy_storage::Storage;
-use verseguy_plugin_fleet::service::FleetService;
-use verseguy_plugin_fleet::types::{Ship, Loadout, Component, Insurance, ShipStatus};
+use plugins_base_fleet::service::FleetService;
+use plugins_base_fleet::types::{Ship, Loadout, Component, Insurance, ShipStatus};
 
 #[test]
 fn test_add_get_list_ship() {

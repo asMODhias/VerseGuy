@@ -1,7 +1,7 @@
 use tempfile::TempDir;
 use verseguy_storage::Storage;
-use verseguy_plugin_organization::service::OrganizationService;
-use verseguy_plugin_organization::types::{Organization, Member};
+use plugins_base_organization::service::OrganizationService;
+use plugins_base_organization::types::{Organization, Member};
 
 #[test]
 fn test_create_get_delete_org() {

@@ -7,6 +7,7 @@ pub enum AuthMethod {
     /// Local username/password authentication
     Local {
         username: String,
+        password_hash: String,
     },
     /// OAuth authentication
     OAuth {

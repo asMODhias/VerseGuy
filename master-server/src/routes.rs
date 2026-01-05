@@ -4,7 +4,7 @@ use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use verseguy_auth::local::LocalAuth;
-use verseguy_auth::SessionManager;
+use verseguy_auth::SessionService;
 use verseguy_licensing::validate_license;
 
 #[derive(Deserialize)]
@@ -55,9 +55,9 @@ pub async fn login_handler(
         .await
         .map_err(|e| (axum::http::StatusCode::UNAUTHORIZED, format!("{}", e)))?;
 
-    let session_manager = SessionManager::new(state.license_secret.clone(), (*state.storage).clone());
-    let token = session_manager
-        .create_session(user.id.clone(), user.license)
+    let session_service = SessionService::new(state.license_secret.clone());
+    let token = session_service
+        .create_and_store_session(&user.id, &user.license, 7, &(*state.storage).clone())
         .map_err(|e| {
             (
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -285,8 +285,8 @@ pub async fn plugins_publish_handler(
 }
 
 // --- Organization endpoints ---
-use verseguy_plugin_organization::service::OrganizationService;
-use verseguy_plugin_organization::types::Organization as OrgType;
+use plugins_base_organization::service::OrganizationService;
+use plugins_base_organization::types::Organization as OrgType;
 use axum::extract::Path;
 use axum::http::StatusCode;
 
@@ -328,4 +328,50 @@ pub async fn orgs_get_handler(
     let svc = OrganizationService::new((*state.storage).clone());
     let org = svc.get_organization(&id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
     Ok(Json(org))
+}
+
+// --- Stubs for handlers referenced by older routes ---
+pub async fn tos_accept_handler(
+    _State(_state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "TOS acceptance not implemented".to_string()))
+}
+
+pub async fn tos_get_handler(
+    _State(_state): State<Arc<AppState>>,
+    _Path(_user_id): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "TOS fetch not implemented".to_string()))
+}
+
+pub async fn verify_plugin_handler(
+    _State(_state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Plugin verification not implemented".to_string()))
+}
+
+pub async fn revoke_handler(
+    _State(_state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Revocation not implemented".to_string()))
+}
+
+pub async fn revocations_list_handler(
+    _State(_state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Revocations list not implemented".to_string()))
+}
+
+pub async fn audit_export_handler(
+    _State(_state): State<Arc<AppState>>,
+    _Path(_user_id): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Audit export not implemented".to_string()))
+}
+
+pub async fn user_data_delete_handler(
+    _State(_state): State<Arc<AppState>>,
+    _Path(_user_id): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "User data deletion not implemented".to_string()))
 }
