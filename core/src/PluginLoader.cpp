@@ -17,7 +17,8 @@ bool PluginLoader::verify_manifest_with_tool(const std::string& manifest_path, c
 
     // Fallback to cargo run which will build & run the tool
     std::ostringstream cargo_cmd;
-    cargo_cmd << "cargo run -p master_server --bin manifest-tool -- verify --manifest \"" << manifest_path << "\" --sig \"" << sig_path << "\" --pubkey \"" << pubkey_path << "\"";
+    // Use --manifest-path so cargo finds the workspace root even when invoked from build dirs
+    cargo_cmd << "cargo run --manifest-path ../../Cargo.toml -p master_server --bin manifest-tool -- verify --manifest \"" << manifest_path << "\" --sig \"" << sig_path << "\" --pubkey \"" << pubkey_path << "\"";
     rc = std::system(cargo_cmd.str().c_str());
     return rc == 0;
 }
