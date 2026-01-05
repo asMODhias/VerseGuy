@@ -101,10 +101,10 @@ pub fn parse_ships_from_value(v: &Value) -> Result<Vec<ScShip>> {
     // If it's an object
     if let Some(obj) = v.as_object() {
         // If it looks like a single ship (has id or name), try deserialize to ScShip
-        if obj.contains_key("id") || obj.contains_key("name") || obj.contains_key("displayname") {
-            if let Ok(s) = serde_json::from_value::<ScShip>(v.clone()) {
-                return Ok(vec![s]);
-            }
+        if (obj.contains_key("id") || obj.contains_key("name") || obj.contains_key("displayname"))
+            && let Ok(s) = serde_json::from_value::<ScShip>(v.clone())
+        {
+            return Ok(vec![s]);
         }
 
         // Otherwise, it might be a mapping of id->object. Try to iterate values and deserialize
