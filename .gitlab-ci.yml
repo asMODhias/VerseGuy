@@ -1,0 +1,72 @@
+stages:
+  - fmt
+  - clippy
+  - test
+  - build
+  - ctest
+  - smoke
+
+variables:
+  RUST_BACKTRACE: "1"
+  RUST_LOG: "info"
+  CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
+
+cache:
+  key: "${CI_COMMIT_REF_SLUG}"
+  paths:
+    - .cargo/registry
+    - target
+
+fmt:
+  image: rust:latest
+  stage: fmt
+  script:
+    - cargo fmt --all -- --check
+
+clippy:
+  image: rust:latest
+  stage: clippy
+  script:
+    - cargo clippy --all-targets -- -D warnings
+
+test:
+  image: rust:latest
+  stage: test
+  script:
+    - cargo test --workspace --verbose
+
+build_core:
+  image: ubuntu:24.04
+  stage: build
+  script:
+    - apt-get update && apt-get install -y cmake build-essential ninja-build
+    - cmake -S core -B core/build -DCMAKE_BUILD_TYPE=Release -G Ninja
+    - cmake --build core/build --config Release
+  artifacts:
+    paths:
+      - core/build
+
+ctest:
+  image: ubuntu:24.04
+  stage: ctest
+  script:
+    - apt-get update && apt-get install -y cmake ctest
+    - cd core/build && ctest --output-on-failure -C Release
+
+mdns_smoke:
+  image: rust:latest
+  stage: smoke
+  script:
+    - RUST_LOG=debug RUST_BACKTRACE=1 cargo test -p verseguy_p2p -- --nocapture ping_between_two_peers_mdns_discovery --ignored
+  when: manual
+  allow_failure: true
+
+mdns_stress:
+  image: rust:latest
+  stage: smoke
+  script:
+    - echo "Starting mdns stress runs (manual, allow_failure)"
+    - for i in $(seq 1 50); do echo "run $i"; RUST_LOG=debug RUST_BACKTRACE=1 cargo test -p verseguy_p2p -- --nocapture ping_between_two_peers_mdns_discovery --ignored || exit 1; done
+  when: manual
+  allow_failure: true
+  timeout: 30m

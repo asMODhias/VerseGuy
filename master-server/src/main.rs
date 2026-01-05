@@ -3,6 +3,9 @@ use master_server::build_app;
 use master_server::state::AppState;
 use std::sync::Arc;
 
+#[cfg(feature = "run-server")]
+use master_server::run_server;
+
 #[cfg(not(test))]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

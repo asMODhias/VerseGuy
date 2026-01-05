@@ -1,6 +1,7 @@
 # Plugin API & Manifest — Extract (Canonical)
 
 ## C++ `IPlugin` Interface (Key Methods)
+
 ```cpp
 struct IPlugin {
     const char* (*get_id)(void*);
@@ -15,6 +16,7 @@ IPlugin* PluginInit();
 ```
 
 ## Plugin Host Interface
+
 ```cpp
 struct IPluginHost {
     void* (*get_storage_service)(void*);
@@ -25,6 +27,7 @@ struct IPluginHost {
 ```
 
 ## Manifest (TOML) Example
+
 ```toml
 [plugin]
 id = "org.verseguy.organization"
@@ -43,6 +46,7 @@ license_required = "Free"
 ```
 
 ## Capabilities
+
 - storage:read, storage:write
 - network:p2p, network:master_server
 - ui:panel, notifications

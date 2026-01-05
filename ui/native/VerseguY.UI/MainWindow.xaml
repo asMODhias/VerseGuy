@@ -6,6 +6,16 @@
     Title="VerseguY" Height="720" Width="1280">
 
     <Grid>
-        <Frame x:Name="MainFrame" />
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Background="#0A1628" Padding="8">
+            <Button x:Name="OrgTabButton" Content="Organization" AutomationProperties.AutomationId="Tab:Organization" Margin="0,4" />
+            <Button x:Name="AuthNavButton" Content="Auth" AutomationProperties.AutomationId="Nav:Auth" Margin="0,4" />
+        </StackPanel>
+
+        <Frame x:Name="MainFrame" Grid.Column="1" />
     </Grid>
 </Window>

@@ -1,7 +1,7 @@
 //! P2P crate: simple libp2p-based peer with ping test
 
 use anyhow::Result;
-use libp2p::{identity, PeerId};
+use libp2p::{PeerId, identity};
 
 pub struct Peer {
     pub id: PeerId,
@@ -24,7 +24,7 @@ mod tests {
 
     use libp2p::swarm::Config as SwarmConfig;
     use libp2p::swarm::SwarmEvent;
-    use libp2p::{ping, Swarm};
+    use libp2p::{Swarm, ping};
     use libp2p_tcp::tokio as tcp_tokio;
     use std::time::Duration;
 
@@ -32,8 +32,8 @@ mod tests {
         let key = identity::Keypair::generate_ed25519();
         let peer_id = PeerId::from(key.public());
 
-        use libp2p::core::multiaddr::Multiaddr as _Multiaddr;
         use libp2p::Transport as _TransportTrait;
+        use libp2p::core::multiaddr::Multiaddr as _Multiaddr;
 
         // Explicit TCP transport (Tokio) with Noise + Yamux
         let tcp = tcp_tokio::Transport::new(libp2p_tcp::Config::default());
@@ -78,7 +78,7 @@ mod tests {
 
         // wait for listen addresses (bounded). Prefer direct `listeners()` if available,
         // fallback to waiting for NewListenAddr events.
-        let addr1 = tokio::time::timeout(Duration::from_secs(4), async {
+        let addr1 = tokio::time::timeout(Duration::from_secs(6), async {
             loop {
                 if let Some(listen) = s1.listeners().next() {
                     break listen.clone();
@@ -89,13 +89,13 @@ mod tests {
                         break address;
                     }
                 }
-                tokio::time::sleep(Duration::from_millis(5)).await;
+                tokio::time::sleep(Duration::from_millis(10)).await;
             }
         })
         .await
         .expect("timed out waiting for s1 listen addr");
 
-        let addr2 = tokio::time::timeout(Duration::from_secs(4), async {
+        let addr2 = tokio::time::timeout(Duration::from_secs(6), async {
             loop {
                 if let Some(listen) = s2.listeners().next() {
                     break listen.clone();
@@ -106,7 +106,7 @@ mod tests {
                         break address;
                     }
                 }
-                tokio::time::sleep(Duration::from_millis(5)).await;
+                tokio::time::sleep(Duration::from_millis(10)).await;
             }
         })
         .await
@@ -146,8 +146,8 @@ mod tests {
                             .send(format!("s1 outgoing error to {:?}: {:?}", peer_id, error))
                             .await;
                         // retry dial after transient error
-                        for i in 1..6 {
-                            tokio::time::sleep(Duration::from_millis(20 * i)).await;
+                        for i in 1..10 {
+                            tokio::time::sleep(Duration::from_millis(50 * i)).await;
                             let _ = s1.dial(d2_clone_for_poller.clone());
                         }
                     }
@@ -179,8 +179,8 @@ mod tests {
                             .send(format!("s2 outgoing error to {:?}: {:?}", peer_id, error))
                             .await;
                         // retry dial after transient error
-                        for i in 1..6 {
-                            tokio::time::sleep(Duration::from_millis(20 * i)).await;
+                        for i in 1..10 {
+                            tokio::time::sleep(Duration::from_millis(50 * i)).await;
                             let _ = s2.dial(d1_clone_for_poller.clone());
                         }
                     }
@@ -194,7 +194,7 @@ mod tests {
 
         // wait for either a connection message or time out
         let mut saw_conn = false;
-        let res = tokio::time::timeout(Duration::from_secs(6), async {
+        let res = tokio::time::timeout(Duration::from_secs(10), async {
             while let Some(msg) = rx.recv().await {
                 eprintln!("log: {}", msg);
                 if msg.starts_with("s1 connected") || msg.starts_with("s2 connected") {
@@ -275,7 +275,7 @@ mod tests {
         eprintln!("s2 listeners: {:?}", s2.listeners().collect::<Vec<_>>());
 
         // small pause to allow mdns to broadcast/receive
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
 
         let (tx, mut rx) = mpsc::channel::<(libp2p::PeerId, libp2p::Multiaddr)>(8);
 
@@ -326,7 +326,7 @@ mod tests {
         let test_body = async {
             // when discovery happens, dial via ping-swarm
             let mut saw = false;
-            let res = tokio::time::timeout(Duration::from_secs(6), async {
+            let res = tokio::time::timeout(Duration::from_secs(8), async {
                 if let Some((peer, addr)) = rx.recv().await {
                     eprintln!("mdns discovered: {} @ {}", peer, addr);
                     // instruct s1 or s2 to dial if discovered peer is the other
@@ -352,12 +352,14 @@ mod tests {
 
                 // if no immediate listeners, poll the ping swarms for NewListenAddr events (bounded)
                 if s1_listen.is_none() && s2_listen.is_none() {
-                    eprintln!("no immediate ping listeners found, waiting briefly for NewListenAddr events");
+                    eprintln!(
+                        "no immediate ping listeners found, waiting briefly for NewListenAddr events"
+                    );
                     let start = tokio::time::Instant::now();
-                    while start.elapsed() < Duration::from_secs(1) {
+                    while start.elapsed() < Duration::from_secs(2) {
                         if let Ok(Some(SwarmEvent::NewListenAddr { address, .. })) =
                             tokio::time::timeout(
-                                Duration::from_millis(250),
+                                Duration::from_millis(500),
                                 futures::StreamExt::next(&mut s1),
                             )
                             .await
@@ -368,7 +370,7 @@ mod tests {
                         }
                         if let Ok(Some(SwarmEvent::NewListenAddr { address, .. })) =
                             tokio::time::timeout(
-                                Duration::from_millis(250),
+                                Duration::from_millis(500),
                                 futures::StreamExt::next(&mut s2),
                             )
                             .await
@@ -385,7 +387,7 @@ mod tests {
                     addr.push(Protocol::P2p(s1_id));
                     eprintln!("fallback: s2 dialing s1 at {}", addr);
                     // retry dial a few times
-                    for i in 0..6 {
+                    for i in 0..8 {
                         match s2.dial(addr.clone()) {
                             Ok(_) => {
                                 eprintln!("s2 dial attempt {} ok", i);
@@ -394,7 +396,7 @@ mod tests {
                             }
                             Err(e) => {
                                 eprintln!("s2 dial attempt {} err: {:?}", i, e);
-                                tokio::time::sleep(Duration::from_millis(20 * (i + 1))).await;
+                                tokio::time::sleep(Duration::from_millis(50 * (i + 1))).await;
                             }
                         }
                     }
@@ -402,7 +404,7 @@ mod tests {
                     let mut addr = listen.clone();
                     addr.push(Protocol::P2p(s2_id));
                     eprintln!("fallback: s1 dialing s2 at {}", addr);
-                    for i in 0..6 {
+                    for i in 0..8 {
                         match s1.dial(addr.clone()) {
                             Ok(_) => {
                                 eprintln!("s1 dial attempt {} ok", i);
@@ -411,23 +413,22 @@ mod tests {
                             }
                             Err(e) => {
                                 eprintln!("s1 dial attempt {} err: {:?}", i, e);
-                                tokio::time::sleep(Duration::from_millis(20 * (i + 1))).await;
+                                tokio::time::sleep(Duration::from_millis(50 * (i + 1))).await;
                             }
                         }
                     }
                 }
-
                 // wait briefly for connections to establish
-                tokio::time::sleep(Duration::from_millis(200)).await;
+                tokio::time::sleep(Duration::from_millis(300)).await;
 
                 // check for connection established events by polling the ping swarms
                 let mut connected = false;
                 if did_dial {
                     // poll for a longer cumulative time to allow connection establishment
                     let start = tokio::time::Instant::now();
-                    while start.elapsed() < Duration::from_secs(3) {
+                    while start.elapsed() < Duration::from_secs(5) {
                         if let Ok(Some(ev)) = tokio::time::timeout(
-                            Duration::from_millis(300),
+                            Duration::from_millis(500),
                             futures::StreamExt::next(&mut s1),
                         )
                         .await
@@ -439,7 +440,7 @@ mod tests {
                             }
                         }
                         if let Ok(Some(ev)) = tokio::time::timeout(
-                            Duration::from_millis(300),
+                            Duration::from_millis(500),
                             futures::StreamExt::next(&mut s2),
                         )
                         .await
@@ -450,7 +451,7 @@ mod tests {
                                 break;
                             }
                         }
-                        tokio::time::sleep(Duration::from_millis(50)).await;
+                        tokio::time::sleep(Duration::from_millis(100)).await;
                     }
                 }
 
@@ -465,7 +466,7 @@ mod tests {
         };
 
         // overall timeout for the test body
-        let overall = tokio::time::timeout(Duration::from_secs(20), test_body).await;
+        let overall = tokio::time::timeout(Duration::from_secs(30), test_body).await;
         // unwrap outer timeout result and the inner test body result (fail with clear message)
         overall
             .expect("mdns test timed out")

@@ -64,4 +64,23 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     }
 }
 
+# 6) Docker: check daemon and build container images
+Write-Host "-> Docker availability and build containers"
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+    Write-Host "docker not found in PATH, skipping container image builds" -ForegroundColor Yellow
+} else {
+    Write-Host "-> docker info (verify daemon)"
+    docker info > $null 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Docker daemon not running or not accessible" }
+
+    Write-Host "-> Pull base images"
+    docker pull rust:1.70-slim-bullseye
+    docker pull debian:bullseye-slim
+
+    Write-Host "-> Build containers/p2p image (with progress)"
+    Write-Host "-> invoking .\scripts\docker-build-wrapper.ps1 -- -t verseguy/p2p:local -f containers/p2p/Dockerfile ."
+    & .\scripts\docker-build-wrapper.ps1 -- -t verseguy/p2p:local -f containers/p2p/Dockerfile .
+    if ($LASTEXITCODE -ne 0) { throw "Failed to build verseguy/p2p:local" }
+}
+
 Write-Host "Local CI checks passed." -ForegroundColor Green

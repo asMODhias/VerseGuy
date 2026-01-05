@@ -12,6 +12,7 @@ pub fn canonical_bytes_from_path(path: &str) -> Result<Vec<u8>> {
 }
 
 pub fn sign_manifest(manifest: &str, out_sig: &str, out_key: &str, out_pub: &str) -> Result<()> {
+    println!("manifest-tool: signing manifest: {}", manifest);
     let bytes = canonical_bytes_from_path(manifest)?;
     let mut csprng = OsRng {};
     let kp: Keypair = Keypair::generate(&mut csprng);
@@ -22,10 +23,18 @@ pub fn sign_manifest(manifest: &str, out_sig: &str, out_key: &str, out_pub: &str
         out_pub,
         general_purpose::STANDARD.encode(kp.public.to_bytes()),
     )?;
+    println!(
+        "manifest-tool: wrote sig={} key={} pub={}",
+        out_sig, out_key, out_pub
+    );
     Ok(())
 }
 
 pub fn verify_manifest(manifest: &str, sigfile: &str, pubfile: &str) -> Result<bool> {
+    println!(
+        "manifest-tool: verifying manifest: {} (sig={}, pub={})",
+        manifest, sigfile, pubfile
+    );
     let bytes = canonical_bytes_from_path(manifest)?;
     let sig_b64 = fs::read_to_string(sigfile)?;
     let sig_bytes = general_purpose::STANDARD.decode(sig_b64.trim())?;
@@ -34,7 +43,13 @@ pub fn verify_manifest(manifest: &str, sigfile: &str, pubfile: &str) -> Result<b
     let pub_bytes = general_purpose::STANDARD.decode(pub_b64.trim())?;
     let pubk = PublicKey::from_bytes(&pub_bytes)?;
     match pubk.verify(&bytes, &sig) {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
+        Ok(_) => {
+            println!("manifest-tool: verification OK");
+            Ok(true)
+        }
+        Err(_) => {
+            println!("manifest-tool: verification FAILED");
+            Ok(false)
+        }
     }
 }

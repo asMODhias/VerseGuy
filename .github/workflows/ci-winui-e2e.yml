@@ -1,0 +1,57 @@
+name: WinUI E2E
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.0.x'
+
+      - name: Install web dependencies
+        working-directory: ui/web
+        run: |
+          npm ci
+
+      - name: Build web
+        working-directory: ui/web
+        run: |
+          npm run build
+
+      - name: Build WinUI project
+        run: |
+          dotnet build ui/native/VerseguY.UI/VerseguY.UI.csproj -c Debug -v minimal
+
+      - name: Copy web assets into VerseguY.UI (CI helper)
+        run: |
+          pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "& './scripts/ci/helpers/copy-web-assets.ps1' -WebDistPath 'ui/web/dist' -UiProjectPath 'ui/native/VerseguY.UI'"
+
+      - name: Run E2E tests
+        run: |
+          dotnet test ui/native/tests/winui-e2e/VerseguY.WinUI.E2E.csproj -c Debug --logger "trx" --results-directory ./artifacts
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: winui-e2e-artifacts
+          path: |
+            ui/native/tests/winui-e2e/**/artifacts
+            ui/native/tests/winui-e2e/TestResults

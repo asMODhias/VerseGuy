@@ -1,0 +1,18 @@
+# Ignore build artifacts and editor metadata to keep Docker build context small
+**/target
+core/build
+**/node_modules
+**/.git
+**/.vscode
+**/.idea
+**/*.log
+**/.cache
+**/dist
+**/build
+**/tmp
+.DS_Store
+.env
+.env.*
+.idea
+.vscode
+*.swp

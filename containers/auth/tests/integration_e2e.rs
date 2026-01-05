@@ -1,7 +1,7 @@
 use tempfile::tempdir;
+use verseguy_auth::License;
 use verseguy_auth::local::LocalAuth;
 use verseguy_auth::session::SessionService;
-use verseguy_auth::License;
 use verseguy_storage::RocksDBStorage;
 
 #[tokio::test]

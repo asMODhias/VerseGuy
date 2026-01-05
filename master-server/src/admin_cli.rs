@@ -61,8 +61,13 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 req = req.header("x-admin-token", t);
             }
             let resp = req.send()?;
+            let status = resp.status();
             let txt = resp.text()?;
-            println!("{}", txt);
+            println!("[key-list] status: {}", status);
+            println!(
+                "[key-list] body (truncated 2k): {}",
+                &txt.chars().take(2048).collect::<String>()
+            );
         }
         Commands::KeyRotate => {
             let url = format!("{}/admin/keys/rotate", cli.server);
@@ -71,7 +76,13 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 req = req.header("x-admin-token", t);
             }
             let resp = req.send()?;
-            println!("{}", resp.text()?);
+            let status = resp.status();
+            let txt = resp.text()?;
+            println!("[key-rotate] status: {}", status);
+            println!(
+                "[key-rotate] body (truncated 2k): {}",
+                &txt.chars().take(2048).collect::<String>()
+            );
         }
         Commands::KeyImport { file, b64 } => {
             let url = format!("{}/admin/keys/import", cli.server);
@@ -89,7 +100,13 @@ fn run(cli: Cli) -> anyhow::Result<()> {
                 req = req.header("x-admin-token", t);
             }
             let resp = req.send()?;
-            println!("{}", resp.text()?);
+            let status = resp.status();
+            let txt = resp.text()?;
+            println!("[key-import] status: {}", status);
+            println!(
+                "[key-import] body (truncated 2k): {}",
+                &txt.chars().take(2048).collect::<String>()
+            );
         }
     }
 

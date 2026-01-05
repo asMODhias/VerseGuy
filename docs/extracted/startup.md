@@ -1,6 +1,7 @@
 # Startup Sequence — Extract
 
 ## Target Startup Timings
+
 - Time_0ms: Launch `VerseguY.exe` stub
 - Time_50ms: Load `VerseguY.Core.dll`
 - Time_100ms: WinUI 3 window appears
@@ -9,6 +10,7 @@
 - Time_500ms: UI fully loaded (ready)
 
 ## First-run Logic (Rust snippet)
+
 ```rust
 pub fn is_first_run() -> Result<bool> {
     let config_dir = get_config_dir()?;
@@ -25,6 +27,7 @@ pub fn mark_initialized() -> Result<()> {
 ```
 
 Notes:
+
 - Core must be minimal (<5MB) and avoid business logic.
 - Plugin discovery must be fast; plugin load times target ~5ms per plugin.
 

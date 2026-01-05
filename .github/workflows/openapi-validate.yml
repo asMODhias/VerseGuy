@@ -1,0 +1,32 @@
+name: OpenAPI Validate
+
+# Manual OpenAPI validation workflow skeleton.
+# Validates OpenAPI specs in the repository (manual trigger) and uploads artifacts.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  openapi-validate:
+    name: Validate OpenAPI specs (manual)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Validate openapi/admin_keys.yaml (example)
+        run: |
+          if [ -f openapi/admin_keys.yaml ]; then
+            echo "Found admin_keys.yaml"
+            npx @apidevtools/swagger-cli validate openapi/admin_keys.yaml || true
+          else
+            echo "No openapi/admin_keys.yaml found; add OpenAPI spec to enable validation.";
+          fi
+
+      - name: Summary
+        run: |
+          echo "OpenAPI validation finished (manual). Add specific validators or generators as needed."

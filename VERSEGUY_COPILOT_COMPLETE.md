@@ -401,6 +401,18 @@ impl RocksDBStorage {
 
 ## Plugin Interface (C++)
 
+### Manifest Verification (Core)
+
+The Core exposes an exported function to verify plugin manifests and their signatures before loading a plugin:
+
+- `int VerifyPluginManifest(const char* manifest_path, const char* sig_path, const char* pubkey_path)` — returns `0` for success, non-zero for failure.
+
+Implementation notes:
+- The core uses the `manifest-tool` (Rust) to canonicalize manifests and perform ed25519 verification when available; the C++ `PluginLoader` falls back to invoking `cargo run` for the `manifest-tool` during tests.
+- CI now builds `manifest-tool` and runs `test_plugin_verify` and `test_plugin_verify_call` checks as part of the Windows build to ensure end-to-end signing/verification.
+
+
+
 ```cpp
 // core/include/IPlugin.h
 
