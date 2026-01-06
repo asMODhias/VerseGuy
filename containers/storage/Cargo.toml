@@ -11,8 +11,14 @@ anyhow = "1.0"
 tracing = "0.1"
 keyring = "1.0"
 base64 = "0.21"
+# Backup utilities
+flate2 = "1.0"
+tar = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+# Temp files used during restore
+tempfile = "3.8"
 
 [dev-dependencies]
-tempfile = "3.5"
+tempfile = "3.8"
 verseguy_test_utils = { path = "../../crates/shared/test_utils" }
 tracing-subscriber = "0.3"

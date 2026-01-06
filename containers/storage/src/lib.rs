@@ -136,5 +136,9 @@ pub type RocksDBStorage = Storage;
 // Database schema utilities
 pub mod schema;
 
+// Backup & Restore
+pub mod backup;
+pub use backup::BackupService;
+
 // Secure secrets storage (system keyring)
 pub mod secrets;
