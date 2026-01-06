@@ -28,6 +28,7 @@ version = "2.0.0"
 edition = "2021"
 authors = ["Matthias Eckel"]
 license = "MIT"
+rust-version = "1.72"
 
 [workspace.dependencies]
 # Async Runtime
@@ -94,5 +95,10 @@ strip = true
 panic = "abort"
 
 
+[patch.crates-io]
+# Temporary local patch to test bumping ring via a patched rcgen fork and patch libp2p-tls to work with the newer rcgen API.
+# Remove this after upstream rcgen/libp2p-tls ship releases that fix the advisory.
+rcgen = { path = "patches/rcgen/rcgen" }
+libp2p-tls = { path = "patches/libp2p-tls" }
 
 

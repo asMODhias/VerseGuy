@@ -1,8 +1,8 @@
+use anyhow::Result;
 use ed25519_dalek as ed;
+use ed25519_dalek::Signer;
 use rand::rngs::OsRng;
 use rand::RngCore;
-use ed25519_dalek::{Signer, Verifier};
-use anyhow::Result;
 
 #[derive(Clone)]
 pub struct Keypair {
@@ -12,10 +12,10 @@ pub struct Keypair {
 
 impl Keypair {
     pub fn generate(rng: &mut OsRng) -> Self {
-        // Generate 64 random bytes and interpret as keypair bytes
-        let mut kb = [0u8; 64];
-        rng.try_fill_bytes(&mut kb).expect("failed to generate randomness");
-        let signing = ed::SigningKey::from_keypair_bytes(&kb).expect("failed to create signing key");
+        // Generate a secret key and derive the public key
+        let mut sk = [0u8; 32];
+        rng.fill_bytes(&mut sk);
+        let signing = ed::SigningKey::from_bytes(&sk);
         let public = signing.verifying_key();
         Keypair { signing, public }
     }
