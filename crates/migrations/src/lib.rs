@@ -21,8 +21,18 @@ pub struct Migration {
 }
 
 impl Migration {
-    pub fn new(version: u32, name: &'static str, up: MigrationFn, down: Option<MigrationFn>) -> Self {
-        Self { version, name, up, down }
+    pub fn new(
+        version: u32,
+        name: &'static str,
+        up: MigrationFn,
+        down: Option<MigrationFn>,
+    ) -> Self {
+        Self {
+            version,
+            name,
+            up,
+            down,
+        }
     }
 }
 
@@ -47,9 +57,17 @@ impl MigrationManager {
         let current = self.current_version(storage)?;
         for migration in &self.migrations {
             if migration.version > current {
-                tracing::info!(version = migration.version, name = migration.name, "Applying migration");
+                tracing::info!(
+                    version = migration.version,
+                    name = migration.name,
+                    "Applying migration"
+                );
                 (migration.up)(storage).context("migration.up failed")?;
-                let am = AppliedMigration { version: migration.version, name: migration.name.to_string(), applied_at: Utc::now() };
+                let am = AppliedMigration {
+                    version: migration.version,
+                    name: migration.name.to_string(),
+                    applied_at: Utc::now(),
+                };
                 storage.put(format!("migrations:applied:{}", migration.version), &am)?;
                 storage.put("migrations:version", &migration.version)?;
                 applied.push(am);
@@ -63,7 +81,12 @@ impl MigrationManager {
         if current == 0 {
             return Ok(None);
         }
-        let mig = self.migrations.iter().rev().find(|m| m.version == current).cloned();
+        let mig = self
+            .migrations
+            .iter()
+            .rev()
+            .find(|m| m.version == current)
+            .cloned();
         if let Some(m) = mig {
             if let Some(down) = m.down {
                 tracing::info!(version = m.version, name = m.name, "Rolling back migration");
@@ -72,7 +95,13 @@ impl MigrationManager {
                 let am: Option<AppliedMigration> = storage.get(&key)?;
                 storage.delete(&key)?;
                 // Set version to previous (find prev migration)
-                let prev = self.migrations.iter().filter(|x| x.version < m.version).map(|x| x.version).max().unwrap_or(0);
+                let prev = self
+                    .migrations
+                    .iter()
+                    .filter(|x| x.version < m.version)
+                    .map(|x| x.version)
+                    .max()
+                    .unwrap_or(0);
                 storage.put("migrations:version", &prev)?;
                 return Ok(am);
             } else {

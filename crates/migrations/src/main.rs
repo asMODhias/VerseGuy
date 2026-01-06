@@ -1,7 +1,7 @@
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use verseguy_migrations::{Migration, MigrationManager};
 use verseguy_storage::RocksDBStorage as Storage;
-use anyhow::Result;
 
 #[derive(Parser, Debug)]
 #[command(name = "verseguy-migrate")]
@@ -25,8 +25,14 @@ enum Commands {
 }
 
 fn built_in_migrations() -> Vec<Migration> {
-    fn up(s: &Storage) -> Result<()> { s.put("migr:welcome", &"1")?; Ok(()) }
-    fn down(s: &Storage) -> Result<()> { s.delete("migr:welcome")?; Ok(()) }
+    fn up(s: &Storage) -> Result<()> {
+        s.put("migr:welcome", &"1")?;
+        Ok(())
+    }
+    fn down(s: &Storage) -> Result<()> {
+        s.delete("migr:welcome")?;
+        Ok(())
+    }
     vec![Migration::new(1, "welcome", up, Some(down))]
 }
 
