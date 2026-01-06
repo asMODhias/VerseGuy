@@ -26,25 +26,50 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
     // Choose exporter: gRPC (default) or HTTP (if OTLP_USE_HTTP=1)
     let use_http = std::env::var("OTLP_USE_HTTP").is_ok();
     if debug { eprintln!("OTLP_USE_HTTP={}", use_http); }
-    let exporter = if use_http {
-        if debug { eprintln!("Using OTLP HTTP exporter -> {}/v1/traces", otlp_endpoint.trim_end_matches('/')); }
-        opentelemetry_otlp::new_exporter().http().with_endpoint(format!("{}/v1/traces", otlp_endpoint.trim_end_matches('/')))
-    } else {
-        if debug { eprintln!("Using OTLP gRPC exporter -> {}", otlp_endpoint); }
-        opentelemetry_otlp::new_exporter().tonic().with_endpoint(otlp_endpoint.clone())
-    };
 
     use opentelemetry_sdk::trace as sdktrace;
     use opentelemetry_sdk::Resource;
 
-    let tracer_provider = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(exporter)
-        .with_trace_config(sdktrace::Config::default().with_resource(Resource::new(vec![KeyValue::new(
-            "service.name",
-            "telemetry-e2e",
-        )])))
-        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+    let tracer_provider = if use_http {
+        if debug {
+            eprintln!(
+                "Using OTLP HTTP exporter -> {}/v1/traces",
+                otlp_endpoint.trim_end_matches('/'),
+            );
+        }
+        opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_exporter(
+                opentelemetry_otlp::new_exporter()
+                    .http()
+                    .with_endpoint(format!("{}/v1/traces", otlp_endpoint.trim_end_matches('/'))),
+            )
+            .with_trace_config(
+                sdktrace::Config::default().with_resource(Resource::new(vec![KeyValue::new(
+                    "service.name",
+                    "telemetry-e2e",
+                )])),
+            )
+            .install_batch(opentelemetry_sdk::runtime::Tokio)?
+    } else {
+        if debug {
+            eprintln!("Using OTLP gRPC exporter -> {}", otlp_endpoint);
+        }
+        opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_exporter(
+                opentelemetry_otlp::new_exporter()
+                    .tonic()
+                    .with_endpoint(otlp_endpoint.clone()),
+            )
+            .with_trace_config(
+                sdktrace::Config::default().with_resource(Resource::new(vec![KeyValue::new(
+                    "service.name",
+                    "telemetry-e2e",
+                )])),
+            )
+            .install_batch(opentelemetry_sdk::runtime::Tokio)?
+    };
     let tracer = global::tracer("telemetry-e2e");
 
     // Diagnostic: check OTLP endpoint TCP reachability before sending spans
