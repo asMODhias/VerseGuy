@@ -418,7 +418,7 @@ pub async fn verify_plugin_handler(
     State(state): State<Arc<AppState>>,
     Json(req): Json<VerifyRequest>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    use ed25519_dalek::PublicKey;
+    use crate::ed25519_compat::PublicKey;
     let pub_bytes = base64::engine::general_purpose::STANDARD
         .decode(&req.public_key_b64)
         .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid base64: {}", e)))?;

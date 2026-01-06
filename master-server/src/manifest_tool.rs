@@ -1,7 +1,7 @@
 use anyhow::Result;
 use base64::{engine::general_purpose, Engine as _};
 use crate::ed25519_compat::{Keypair, PublicKey};
-use ed25519_dalek::Signature;
+use ed25519_dalek::{Signature, Verifier};
 use rand::rngs::OsRng;
 use std::fs;
 
@@ -17,7 +17,7 @@ pub fn sign_manifest(manifest: &str, out_sig: &str, out_key: &str, out_pub: &str
     let bytes = canonical_bytes_from_path(manifest)?;
     let mut csprng = OsRng {};
     let kp: Keypair = Keypair::generate(&mut csprng);
-    let sig: Signature = kp.sign(&bytes);
+    let sig = kp.sign(&bytes)?;
     fs::write(out_sig, general_purpose::STANDARD.encode(sig.to_bytes()))?;
     fs::write(out_key, kp.to_bytes())?;
     fs::write(

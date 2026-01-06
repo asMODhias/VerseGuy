@@ -2,7 +2,7 @@ use anyhow::Result;
 use base64::{engine::general_purpose, Engine as _};
 use chrono::Utc;
 use crate::ed25519_compat::{Keypair, PublicKey};
-use ed25519_dalek::Signature;
+use ed25519_dalek::{Signature, Verifier};
 use serde::{Deserialize, Serialize};
 use verseguy_storage::RocksDBStorage;
 
@@ -40,7 +40,7 @@ pub fn store_manifest(
 
     if let Some(kp) = keypair {
         let bytes = canonical_manifest_bytes(manifest)?;
-        let sig: Signature = kp.sign(&bytes);
+        let sig = kp.sign(&bytes)?;
         let sig_b64 = general_purpose::STANDARD.encode(sig.to_bytes());
         let sig_key = format!("plugin_sig:{}:{}", manifest.id, manifest.version);
         storage.put(sig_key.as_bytes(), &sig_b64)?;

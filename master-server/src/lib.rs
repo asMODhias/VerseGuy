@@ -15,6 +15,8 @@ pub mod admin_cli;
 pub mod keystore;
 pub mod manifest_tool;
 
+pub mod ed25519_compat;
+
 pub fn build_app(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/auth/register", post(routes::register_handler))
