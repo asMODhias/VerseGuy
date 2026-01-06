@@ -32,6 +32,16 @@ jobs:
             sleep 2
           done
 
+      - name: Wait for OTLP gRPC port (4317)
+        run: |
+          for i in {1..60}; do
+            if (echo > /dev/tcp/127.0.0.1/4317) >/dev/null 2>&1; then
+              echo "OTLP gRPC port 4317 is open"; break
+            fi
+            echo "waiting for otlp gRPC port..."
+            sleep 2
+          done
+
       - name: Run telemetry e2e tests (with retries)
         env:
           OTLP_ENDPOINT: "http://localhost:4317"
