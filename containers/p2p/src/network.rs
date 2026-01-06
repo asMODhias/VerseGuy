@@ -2,17 +2,14 @@ use anyhow::{Context, Result};
 use futures::stream::StreamExt;
 use libp2p::identity;
 use libp2p::ping;
-use libp2p::gossipsub;
 use libp2p::swarm::{SwarmEvent, Config as SwarmConfig};
 use libp2p::{PeerId, Swarm};
 use libp2p::tcp::tokio as tcp_tokio;
 use libp2p::core::upgrade;
 use libp2p::yamux::Config as YamuxConfig;
-use libp2p_mdns;
 use std::collections::HashSet;
-use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
-use tracing::{debug, info};
+use tracing::debug;
 
 #[derive(Debug, Clone)]
 pub enum P2PEvent {
@@ -21,6 +18,7 @@ pub enum P2PEvent {
     MessageReceived { from: PeerId, topic: String, data: Vec<u8> },
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 enum Control {
     Publish(String, Vec<u8>),
@@ -32,6 +30,7 @@ enum Control {
 // We'll add Gossipsub and mDNS integration via separate test swarms to validate behavior.
 
 pub struct P2PNetwork {
+    #[allow(dead_code)]
     peer_id: PeerId,
     ctrl_tx: mpsc::UnboundedSender<Control>,
 }
@@ -45,7 +44,7 @@ impl P2PNetwork {
         // Use tokio TCP transport
         let tcp = tcp_tokio::Transport::new(libp2p::tcp::Config::default());
         use libp2p::Transport as _TransportTrait;
-        let noise_config = libp2p::noise::Config::new(&keypair).expect("failed to create noise config");
+        let noise_config = libp2p::noise::Config::new(&keypair).context("failed to create noise config")?;
         let transport = tcp
             .upgrade(upgrade::Version::V1)
             .authenticate(noise_config)

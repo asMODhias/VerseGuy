@@ -8,6 +8,7 @@ pub mod legal;
 pub mod plugins;
 pub mod routes;
 pub mod state;
+pub mod observability;
 
 use state::AppState;
 pub mod admin_cli;
@@ -31,6 +32,9 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .route("/verify/plugin", post(routes::verify_plugin_handler))
         .route("/verify/revoke", post(routes::revoke_handler))
         .route("/verify/revocations", get(routes::revocations_list_handler))
+        // Observability
+        .route("/healthz", get(routes::health_handler))
+        .route("/metrics", get(routes::metrics_handler))
         // Legal / admin legal endpoints
         .route("/admin/legal", post(legal::admin_create_legal_handler))
         .route("/admin/legal/{id}", get(legal::admin_get_legal_handler))

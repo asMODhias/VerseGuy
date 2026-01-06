@@ -379,12 +379,13 @@ pub fn import_from_p4k<P: AsRef<Path>>(p4k: P, storage: &RocksDBStorage) -> Resu
 mod tests {
     use super::*;
     use tempfile::tempdir;
+    use verseguy_test_utils::{must, must_opt};
 
     #[test]
     fn import_sample_file() {
-        let dir = tempdir().expect("failed to create tempdir");
+        let dir = must(tempdir());
         let dbpath = dir.path().join("db");
-        let storage = RocksDBStorage::open(dbpath).expect("failed to open RocksDB storage");
+        let storage = must(RocksDBStorage::open(dbpath));
 
         // prepare sample JSON
         let sample = r#"[
@@ -392,13 +393,13 @@ mod tests {
             {"id":"ship-b","name":"Ship B","role":"transport"}
         ]"#;
         let file = dir.path().join("sample.json");
-        std::fs::write(&file, sample).expect("failed to write sample file");
+        must(std::fs::write(&file, sample));
 
-        let n = import_from_file(file.to_str().expect("file path not utf8"), &storage).expect("import failed");
+        let n = must(import_from_file(must_opt(file.to_str(), "file path not utf8"), &storage));
         assert_eq!(n, 2);
 
-        let s: Option<ScShip> = storage.get(b"scunpacked:ship:ship-a").expect("db get failed");
-        assert!(s.is_some());
-        assert_eq!(s.expect("expected ship present").name, "Ship A");
+        let s: Option<ScShip> = must(storage.get(b"scunpacked:ship:ship-a"));
+        let s = must_opt(s, "expected ship present");
+        assert_eq!(s.name, "Ship A");
     }
 }

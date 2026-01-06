@@ -242,10 +242,14 @@ let temp_dir = TempDir::new().map_err(|e| anyhow!("tempdir: {}", e))?;
 let storage = Storage::open(temp_dir.path()).context("Failed to open storage")?;
 ```
 
-Example (acceptable in tests):
+Example (preferred in tests):
 ```rust
-let temp_dir = TempDir::new().expect("Failed to create temp dir");
-let storage = Storage::open(temp_dir.path()).expect("Failed to open storage");
+#[test]
+fn test_example() -> anyhow::Result<()> {
+    let temp_dir = TempDir::new()?;
+    let storage = Storage::open(temp_dir.path())?;
+    Ok(())
+}
 ```
 
 # Logging
@@ -1210,8 +1214,8 @@ mod tests {
     }
     
     fn setup() -> (TempDir, Storage) {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let storage = Storage::open(temp_dir.path()).expect("Failed to open storage");
+        let temp_dir = TempDir::new().unwrap_or_else(|e| panic!("Failed to create temp dir: {}", e));
+        let storage = Storage::open(temp_dir.path()).unwrap_or_else(|e| panic!("Failed to open storage: {}", e));
         (temp_dir, storage)
     }
     
@@ -1230,9 +1234,14 @@ mod tests {
             value: 42,
         };
         
-        storage.put(b"key", &data).expect("Failed to put");
+        if let Err(e) = storage.put(b"key", &data) {
+            panic!("Failed to put: {}", e);
+        }
         
-        let retrieved: Option<TestData> = storage.get(b"key").expect("Failed to get");
+        let retrieved: Option<TestData> = match storage.get(b"key") {
+            Ok(v) => v,
+            Err(e) => panic!("Failed to get: {}", e),
+        };
         
         assert_eq!(retrieved, Some(data));
     }
@@ -1241,7 +1250,10 @@ mod tests {
     fn test_get_nonexistent() {
         let (_temp_dir, storage) = setup();
         
-        let retrieved: Option<TestData> = storage.get(b"nonexistent").expect("Failed to get");
+        let retrieved: Option<TestData> = match storage.get(b"nonexistent") {
+            Ok(v) => v,
+            Err(e) => panic!("Failed to get: {}", e),
+        };
         
         assert_eq!(retrieved, None);
     }
@@ -1255,10 +1267,17 @@ mod tests {
             value: 42,
         };
         
-        storage.put(b"key", &data).expect("Failed to put");
-        storage.delete(b"key").expect("Failed to delete");
+        if let Err(e) = storage.put(b"key", &data) {
+            panic!("Failed to put: {}", e);
+        }
+        if let Err(e) = storage.delete(b"key") {
+            panic!("Failed to delete: {}", e);
+        }
         
-        let retrieved: Option<TestData> = storage.get(b"key").expect("Failed to get");
+        let retrieved: Option<TestData> = match storage.get(b"key") {
+            Ok(v) => v,
+            Err(e) => panic!("Failed to get: {}", e),
+        };
         
         assert_eq!(retrieved, None);
     }
@@ -1267,16 +1286,26 @@ mod tests {
     fn test_exists() {
         let (_temp_dir, storage) = setup();
         
-        assert!(!storage.exists(b"key").unwrap());
+        let exists = match storage.exists(b"key") {
+            Ok(b) => b,
+            Err(e) => panic!("exists check failed: {}", e),
+        };
+        assert!(!exists);
         
         let data = TestData {
             name: "test".to_string(),
             value: 42,
         };
         
-        storage.put(b"key", &data).expect("Failed to put");
+        if let Err(e) = storage.put(b"key", &data) {
+            panic!("Failed to put: {}", e);
+        }
         
-        assert!(storage.exists(b"key").unwrap());
+        let exists = match storage.exists(b"key") {
+            Ok(b) => b,
+            Err(e) => panic!("exists check failed: {}", e),
+        };
+        assert!(exists);
     }
     
     #[test]
@@ -1284,12 +1313,23 @@ mod tests {
         let (_temp_dir, storage) = setup();
         
         // Put multiple items with same prefix
-        storage.put(b"user:1", &"Alice").expect("Failed to put");
-        storage.put(b"user:2", &"Bob").expect("Failed to put");
-        storage.put(b"user:3", &"Charlie").expect("Failed to put");
-        storage.put(b"post:1", &"Post 1").expect("Failed to put");
+        if let Err(e) = storage.put(b"user:1", &"Alice") {
+            panic!("Failed to put: {}", e);
+        }
+        if let Err(e) = storage.put(b"user:2", &"Bob") {
+            panic!("Failed to put: {}", e);
+        }
+        if let Err(e) = storage.put(b"user:3", &"Charlie") {
+            panic!("Failed to put: {}", e);
+        }
+        if let Err(e) = storage.put(b"post:1", &"Post 1") {
+            panic!("Failed to put: {}", e);
+        }
         
-        let results: Vec<String> = storage.prefix_scan(b"user:").expect("Failed to scan");
+        let results: Vec<String> = match storage.prefix_scan(b"user:") {
+            Ok(r) => r,
+            Err(e) => panic!("Failed to scan: {}", e),
+        };
         
         assert_eq!(results.len(), 3);
         assert!(results.contains(&"Alice".to_string()));
@@ -1307,15 +1347,29 @@ mod tests {
             (b"key3".as_ref(), TestData { name: "three".to_string(), value: 3 }),
         ];
         
-        storage.batch_put(items).expect("Failed to batch put");
+        if let Err(e) = storage.batch_put(items) {
+            panic!("Failed to batch put: {}", e);
+        }
         
-        let val1: Option<TestData> = storage.get(b"key1").unwrap();
-        let val2: Option<TestData> = storage.get(b"key2").unwrap();
-        let val3: Option<TestData> = storage.get(b"key3").unwrap();
+        let val1 = match storage.get(b"key1") {
+            Ok(Some(v)) => v,
+            Ok(None) => panic!("missing key1"),
+            Err(e) => panic!("Failed to get key1: {}", e),
+        };
+        let val2 = match storage.get(b"key2") {
+            Ok(Some(v)) => v,
+            Ok(None) => panic!("missing key2"),
+            Err(e) => panic!("Failed to get key2: {}", e),
+        };
+        let val3 = match storage.get(b"key3") {
+            Ok(Some(v)) => v,
+            Ok(None) => panic!("missing key3"),
+            Err(e) => panic!("Failed to get key3: {}", e),
+        };
         
-        assert_eq!(val1.unwrap().value, 1);
-        assert_eq!(val2.unwrap().value, 2);
-        assert_eq!(val3.unwrap().value, 3);
+        assert_eq!(val1.value, 1);
+        assert_eq!(val2.value, 2);
+        assert_eq!(val3.value, 3);
     }
     
     #[test]
@@ -1328,10 +1382,15 @@ mod tests {
                 name: format!("test{}", i),
                 value: i,
             };
-            storage.put(format!("key{}", i).as_bytes(), &data).unwrap();
+            if let Err(e) = storage.put(format!("key{}", i).as_bytes(), &data) {
+                panic!("Failed to put: {}", e);
+            }
         }
         
-        let stats = storage.stats().expect("Failed to get stats");
+        let stats = match storage.stats() {
+            Ok(s) => s,
+            Err(e) => panic!("Failed to get stats: {}", e),
+        };
         assert!(!stats.is_empty());
     }
 }
@@ -1900,7 +1959,7 @@ mod tests {
         
         // Register
         let user = auth.register("testuser".to_string(), "password123".to_string())
-            .expect("Registration failed");
+            .unwrap_or_else(|e| panic!("Registration failed: {}", e));
         
         assert_eq!(user.username, "testuser");
         assert_eq!(user.license, License::Free);
@@ -1908,7 +1967,7 @@ mod tests {
         
         // Login
         let logged_in = auth.login("testuser", "password123")
-            .expect("Login failed");
+            .unwrap_or_else(|e| panic!("Login failed: {}", e));
         
         assert_eq!(logged_in.id, user.id);
         assert_eq!(logged_in.username, "testuser");
@@ -1920,13 +1979,17 @@ mod tests {
         
         // First registration
         auth.register("testuser".to_string(), "password123".to_string())
-            .expect("First registration failed");
+            .unwrap_or_else(|e| panic!("First registration failed: {}", e));
         
         // Second registration with same username
         let result = auth.register("testuser".to_string(), "password456".to_string());
         
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("already exists"));
+        let err = match result {
+            Err(e) => e,
+            Ok(_) => panic!("expected error on duplicate registration"),
+        };
+        assert!(err.to_string().contains("already exists"));
     }
     
     #[test]
@@ -1949,7 +2012,11 @@ mod tests {
         // Too short
         let result = auth.register("testuser".to_string(), "pass".to_string());
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("8 characters"));
+        let err = match result {
+            Err(e) => e,
+            Ok(_) => panic!("expected error"),
+        };
+        assert!(err.to_string().contains("8 characters"));
     }
     
     #[test]
@@ -2021,10 +2088,10 @@ mod tests {
             .expect("Registration failed");
         
         auth.delete_user(&user.id)
-            .expect("Delete failed");
+            .unwrap_or_else(|e| panic!("Delete failed: {}", e));
         
         // Verify user is gone
-        let result = auth.get_user(&user.id).expect("Get failed");
+        let result = auth.get_user(&user.id).unwrap_or_else(|e| panic!("Get failed: {}", e));
         assert!(result.is_none());
         
         // Verify username mapping is gone
@@ -2039,9 +2106,10 @@ mod tests {
         let user = auth.register("testuser".to_string(), "password123".to_string())
             .expect("Registration failed");
         
-        let retrieved = auth.get_user_by_username("testuser")
-            .expect("Get failed")
-            .expect("User not found");
+        let retrieved = match auth.get_user_by_username("testuser").unwrap_or_else(|e| panic!("Get failed: {}", e)) {
+            Some(u) => u,
+            None => panic!("User not found"),
+        };
         
         assert_eq!(retrieved.id, user.id);
         assert_eq!(retrieved.username, "testuser");

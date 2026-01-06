@@ -1,12 +1,13 @@
 use master_server::plugins::{verify_manifest, PluginManifest};
 use master_server::state::AppState;
 use tempfile::tempdir;
+use verseguy_test_utils::{must, must_opt};
 
 #[test]
 fn sign_and_verify() {
-    let dir = tempdir().unwrap();
-    let db_path = dir.path().to_str().unwrap().to_string();
-    let state = AppState::new(db_path, b"secret".to_vec()).unwrap();
+    let dir = must(tempdir());
+    let db_path = must_opt(dir.path().to_str(), "tempdir path not utf8").to_string();
+    let state = must(AppState::new(db_path, b"secret".to_vec()));
 
     let manifest = PluginManifest {
         id: "org.test.sign".to_string(),
@@ -18,28 +19,28 @@ fn sign_and_verify() {
     };
 
     // store and sign
-    master_server::plugins::store_manifest(
+    must(master_server::plugins::store_manifest(
         &state.storage,
         &manifest.with_published(),
         state.keypair.as_ref(),
-    )
-    .unwrap();
+    ));
 
     // verify
-    let pubkey = state.keypair.as_ref().unwrap().public;
-    let ok = verify_manifest(&state.storage, &manifest.with_published(), &pubkey).unwrap();
+    let pubkey = must_opt(state.keypair.as_ref(), "missing keypair").public;
+    let ok = must(verify_manifest(&state.storage, &manifest.with_published(), &pubkey));
     assert!(ok);
 
     // revoke and ensure is_revoked returns true
-    master_server::plugins::revoke_manifest(
+    must(master_server::plugins::revoke_manifest(
         &state.storage,
         &manifest.id,
         &manifest.version,
         "test revoke",
-    )
-    .unwrap();
-    let revoked =
-        master_server::plugins::is_revoked(&state.storage, &manifest.id, &manifest.version)
-            .unwrap();
+    ));
+    let revoked = must(master_server::plugins::is_revoked(
+        &state.storage,
+        &manifest.id,
+        &manifest.version,
+    ));
     assert!(revoked);
 }

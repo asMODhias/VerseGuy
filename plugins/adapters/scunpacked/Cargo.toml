@@ -16,3 +16,6 @@ tracing = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 quick-xml = "0.27"
 tempfile = "3.5"
+
+[dev-dependencies]
+verseguy_test_utils = { path = "../../../crates/shared/test_utils" }

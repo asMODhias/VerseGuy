@@ -589,7 +589,7 @@ pub struct LicensingService {
 impl LicensingService {
     pub fn new(storage: Storage, public_key: &[u8; 32]) -> Self {
         let verifying_key = VerifyingKey::from_bytes(public_key)
-            .expect("Invalid public key");
+            .unwrap_or_else(|e| panic!("Invalid public key: {}", e));
         
         Self {
             storage,

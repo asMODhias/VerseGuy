@@ -16,3 +16,4 @@ verseguy_storage = { path = "../../../containers/storage" }
 
 [dev-dependencies]
 tempfile = "3.5"
+verseguy_test_utils = { path = "../../../crates/shared/test_utils" }

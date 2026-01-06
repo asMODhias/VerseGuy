@@ -198,10 +198,11 @@ impl OperationsService {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+    use verseguy_test_utils::{must, must_opt};
     
     fn setup() -> (TempDir, OperationsService) {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let storage = Storage::open(temp_dir.path()).expect("Failed to open storage");
+        let temp_dir = must(TempDir::new());
+        let storage = must(Storage::open(temp_dir.path()));
         let service = OperationsService::new(storage);
         (temp_dir, service)
     }
@@ -210,7 +211,7 @@ mod tests {
     fn test_create_operation() {
         let (_temp_dir, service) = setup();
         
-        let operation = service.create_operation(
+        let operation = must(service.create_operation(
             "org123".to_string(),
             "Mining Op".to_string(),
             "Quantanium mining".to_string(),
@@ -218,7 +219,7 @@ mod tests {
             Utc::now(),
             120,
             "leader123".to_string(),
-        ).expect("Failed to create operation");
+        ));
         
         assert_eq!(operation.title, "Mining Op");
         assert_eq!(operation.operation_type, OperationType::Mining);
@@ -229,7 +230,7 @@ mod tests {
     fn test_add_participant() {
         let (_temp_dir, service) = setup();
         
-        let operation = service.create_operation(
+        let operation = must(service.create_operation(
             "org123".to_string(),
             "Test Op".to_string(),
             "Description".to_string(),
@@ -237,19 +238,18 @@ mod tests {
             Utc::now(),
             60,
             "leader123".to_string(),
-        ).expect("Failed to create operation");
+        ));
         
-        service.add_participant(
+        must(service.add_participant(
             &operation.org_id,
             &operation.id,
             "user123".to_string(),
             "Pilot".to_string(),
             Some("ship123".to_string()),
-        ).expect("Failed to add participant");
+        ));
         
-        let updated = service.get_operation(&operation.org_id, &operation.id)
-            .expect("failed to get operation")
-            .expect("operation not found");
+        let updated = must(service.get_operation(&operation.org_id, &operation.id));
+        let updated = must_opt(updated, "operation not found");
         
         assert_eq!(updated.participants.len(), 1);
         assert_eq!(updated.participants[0].role, "Pilot");
@@ -259,7 +259,7 @@ mod tests {
     fn test_confirm_participant() {
         let (_temp_dir, service) = setup();
         
-        let operation = service.create_operation(
+        let operation = must(service.create_operation(
             "org123".to_string(),
             "Test Op".to_string(),
             "Description".to_string(),
@@ -267,22 +267,20 @@ mod tests {
             Utc::now(),
             60,
             "leader123".to_string(),
-        ).expect("Failed to create operation");
+        ));
         
-        service.add_participant(
+        must(service.add_participant(
             &operation.org_id,
             &operation.id,
             "user123".to_string(),
             "Pilot".to_string(),
             None,
-        ).expect("failed to add participant");
+        ));
         
-        service.confirm_participant(&operation.org_id, &operation.id, "user123")
-            .expect("Failed to confirm participant");
+        must(service.confirm_participant(&operation.org_id, &operation.id, "user123"));
         
-        let updated = service.get_operation(&operation.org_id, &operation.id)
-            .expect("failed to get operation")
-            .expect("operation not found");
+        let updated = must(service.get_operation(&operation.org_id, &operation.id));
+        let updated = must_opt(updated, "operation not found");
         
         assert!(updated.participants[0].confirmed);
     }

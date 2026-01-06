@@ -7,6 +7,7 @@ use std::sync::Arc;
 use master_server::run_server;
 
 #[cfg(not(test))]
+#[allow(clippy::disallowed_methods)]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
@@ -15,8 +16,19 @@ async fn main() -> anyhow::Result<()> {
     let secret = std::env::var("MASTER_LICENSE_SECRET")
         .unwrap_or_else(|_| "master-secret".to_string())
         .into_bytes();
-    let state = Arc::new(AppState::new(db_path, secret)?);
+    // Initialize observability (metrics + tracing)
+    let mut state = AppState::new(db_path, secret)?;
+    // install metrics recorder and expose handle
+    let metrics_handle = match master_server::observability::init_observability() {
+        Ok(h) => Some(h),
+        Err(e) => {
+            tracing::error!("Failed to initialize observability: {}", e);
+            None
+        }
+    };
+    state.metrics_handle = metrics_handle;
 
+    let state = Arc::new(state);
     let _app = build_app(state.clone());
     tracing::info!("Master server built. To run, enable the 'run-server' feature or run via workspace run configuration.");
 

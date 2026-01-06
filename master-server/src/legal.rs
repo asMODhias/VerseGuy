@@ -57,6 +57,7 @@ fn key_revoked(id: &str) -> String {
 }
 
 // Admin: create legal doc
+#[allow(clippy::disallowed_methods)]
 pub async fn admin_create_legal_handler(
     State(state): State<Arc<AppState>>,
     req: Request<Body>,
@@ -138,6 +139,7 @@ pub async fn admin_create_legal_handler(
 }
 
 // Admin: get by id (scan)
+#[allow(clippy::disallowed_methods)]
 pub async fn admin_get_legal_handler(
     State(state): State<Arc<AppState>>,
     req: Request<Body>,
@@ -188,6 +190,7 @@ pub async fn admin_get_legal_handler(
 }
 
 // Admin: list docs (by type optional)
+#[allow(clippy::disallowed_methods)]
 pub async fn admin_list_legal_handler(
     State(state): State<Arc<AppState>>,
     req: Request<Body>,
@@ -227,6 +230,7 @@ pub struct RevokeReq {
     pub reason: String,
 }
 
+#[allow(clippy::disallowed_methods)]
 pub async fn admin_revoke_legal_handler(
     State(state): State<Arc<AppState>>,
     req: Request<Body>,
@@ -286,6 +290,7 @@ pub async fn admin_revoke_legal_handler(
 }
 
 // Client: get latest for type
+#[allow(clippy::disallowed_methods)]
 pub async fn get_latest_legal_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(doc_type): axum::extract::Path<String>,
@@ -316,6 +321,7 @@ pub fn user_has_accepted_latest(storage: &crate::state::AppState, user_id: &str)
 }
 
 // Client: get specific version
+#[allow(clippy::disallowed_methods)]
 pub async fn get_legal_version_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path((doc_type, version)): axum::extract::Path<(String, String)>,

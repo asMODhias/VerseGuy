@@ -1,56 +1,48 @@
+#![allow(clippy::disallowed_methods)]
 use verseguy_auth::local::LocalAuth;
 use tempfile::TempDir;
 use verseguy_storage::RocksDBStorage;
 
 #[tokio::test]
 async fn test_register_duplicate_username() {
-    let temp = TempDir::new().unwrap();
-    let storage = RocksDBStorage::open(temp.path()).unwrap();
+    let temp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(RocksDBStorage::open(temp.path()));
     let auth = LocalAuth::new(storage);
 
-    auth.register("testuser".to_string(), "password123".to_string())
-        .await
-        .expect("first register failed");
+    verseguy_test_utils::must(auth.register("testuser".to_string(), "password123".to_string()).await);
 
     let res = auth
         .register("testuser".to_string(), "anotherpass".to_string())
         .await;
-    assert!(res.is_err());
+    if res.is_err() { } else { panic!("expected Err for duplicate username"); }
 }
 
 #[tokio::test]
 async fn test_login_wrong_password() {
-    let temp = TempDir::new().unwrap();
-    let storage = RocksDBStorage::open(temp.path()).unwrap();
+    let temp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(RocksDBStorage::open(temp.path()));
     let auth = LocalAuth::new(storage);
 
-    auth.register("testuser".to_string(), "password123".to_string())
-        .await
-        .expect("register failed");
+    verseguy_test_utils::must(auth.register("testuser".to_string(), "password123".to_string()).await);
 
     let res = auth.login("testuser", "wrongpassword").await;
-    assert!(res.is_err());
+    if res.is_err() { } else { panic!("expected Err for wrong password"); }
 }
 
 #[tokio::test]
 async fn test_change_password_flow() {
-    let temp = TempDir::new().unwrap();
-    let storage = RocksDBStorage::open(temp.path()).unwrap();
+    let temp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(RocksDBStorage::open(temp.path()));
     let auth = LocalAuth::new(storage);
 
-    let user = auth
-        .register("testuser".to_string(), "oldpassword".to_string())
-        .await
-        .expect("register failed");
+    let user = verseguy_test_utils::must(auth.register("testuser".to_string(), "oldpassword".to_string()).await);
 
-    auth.change_password(&user.id, "oldpassword", "newpassword")
-        .await
-        .expect("change password failed");
+    verseguy_test_utils::must(auth.change_password(&user.id, "oldpassword", "newpassword").await);
 
     // Old password should fail
-    assert!(auth.login("testuser", "oldpassword").await.is_err());
+    if auth.login("testuser", "oldpassword").await.is_err() { } else { panic!("expected old password to fail"); }
 
     // New password works
-    let logged = auth.login("testuser", "newpassword").await.expect("login new pass");
+    let logged = verseguy_test_utils::must(auth.login("testuser", "newpassword").await);
     assert_eq!(logged.id, user.id);
 }

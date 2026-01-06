@@ -101,4 +101,17 @@ impl AuditService {
         items.sort_by(|a, b| a.seq.cmp(&b.seq));
         Ok(items)
     }
+
+    /// Delete all audit entries for a given user and return the number deleted
+    pub fn delete_for_user(&self, user_id: &str) -> Result<usize> {
+        let items: Vec<AuditEntry> = self.db.prefix_scan(b"audit:")?;
+        let mut deleted = 0usize;
+        for e in items.into_iter().filter(|e| e.user_id.as_deref() == Some(user_id)) {
+            let key = format!("audit:{}", e.id);
+            self.db.delete(key.as_bytes())?;
+            deleted += 1;
+        }
+        Ok(deleted)
+    }
 }
+

@@ -23,10 +23,10 @@ impl OAuthHandler {
     pub fn new(storage: Storage) -> Self {
         Self {
             storage,
-            client: Client::builder()
-                .timeout(std::time::Duration::from_secs(30))
-                .build()
-                .expect("Failed to build HTTP client"),
+            client: match Client::builder().timeout(std::time::Duration::from_secs(30)).build() {
+                Ok(c) => c,
+                Err(e) => panic!("Failed to build HTTP client: {}", e),
+            },
             configs: HashMap::new(),
             states: Arc::new(RwLock::new(HashMap::new())),
         }
@@ -48,7 +48,10 @@ impl OAuthHandler {
         let state = Uuid::new_v4().to_string();
         let now = chrono::Utc::now();
         let s = OAuthState { state: state.clone(), provider, created_at: now };
-        self.states.write().expect("oauth states RwLock poisoned").insert(state.clone(), s);
+        match self.states.write() {
+            Ok(mut states) => { states.insert(state.clone(), s); },
+            Err(e) => panic!("oauth states RwLock poisoned: {:?}", e),
+        }
 
         // Build auth URL
         let mut url = Url::parse(&cfg.auth_url).context("Invalid auth url")?;
@@ -78,7 +81,10 @@ impl OAuthHandler {
     pub async fn handle_callback(&self, code: String, state: String) -> Result<User> {
         // Verify state (CSRF protection)
         let oauth_state = {
-            let mut states = self.states.write().expect("oauth states RwLock poisoned");
+            let mut states = match self.states.write() {
+                Ok(s) => s,
+                Err(e) => panic!("oauth states RwLock poisoned: {:?}", e),
+            };
             states.remove(&state)
                 .ok_or_else(|| anyhow::anyhow!("Invalid or expired state"))?
         };

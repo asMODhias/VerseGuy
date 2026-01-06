@@ -783,9 +783,15 @@ mod tests {
         let storage = Storage::open(temp_dir.path()).expect("Failed to open database");
         
         // Put multiple items with same prefix
-        storage.put(b"user:1", &"Alice").expect("Failed to put");
-        storage.put(b"user:2", &"Bob").expect("Failed to put");
-        storage.put(b"user:3", &"Charlie").expect("Failed to put");
+        if let Err(e) = storage.put(b"user:1", &"Alice") {
+            panic!("Failed to put: {}", e);
+        }
+        if let Err(e) = storage.put(b"user:2", &"Bob") {
+            panic!("Failed to put: {}", e);
+        }
+        if let Err(e) = storage.put(b"user:3", &"Charlie") {
+            panic!("Failed to put: {}", e);
+        }
         storage.put(b"post:1", &"Post 1").expect("Failed to put");
         
         let results = storage.prefix_scan(b"user:").expect("Failed to scan");

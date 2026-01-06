@@ -18,7 +18,7 @@ fn main() -> anyhow::Result<()> {
     let dbpath = dir.path().join("db");
     let storage = RocksDBStorage::open(&dbpath)?;
 
-    let n = import_from_file(sample.to_str().unwrap(), &storage)?;
+    let n = import_from_file(sample.to_str().ok_or_else(|| anyhow::anyhow!("sample path not utf8"))?, &storage)?;
     println!("Imported {} ships", n);
 
     // Print out stored ships

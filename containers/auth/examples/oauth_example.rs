@@ -3,6 +3,7 @@ use verseguy_auth::oauth_types::OAuthProvider;
 use verseguy_storage::Storage;
 
 #[tokio::main]
+#[allow(clippy::disallowed_methods)]
 async fn main() -> anyhow::Result<()> {
     // Setup storage (uses ./data by default)
     let storage = Storage::open("./data")?;

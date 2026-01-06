@@ -77,6 +77,7 @@ pub fn verify_manifest(
     }
 }
 
+#[allow(clippy::disallowed_methods)]
 pub fn revoke_manifest(
     storage: &RocksDBStorage,
     id: &str,

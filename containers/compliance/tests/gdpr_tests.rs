@@ -2,12 +2,13 @@ use tempfile::tempdir;
 use verseguy_auth::{AuthMethod, License, User};
 use verseguy_compliance::{delete_user_data, export_user_data};
 use verseguy_storage::RocksDBStorage;
+use verseguy_test_utils::{must, must_opt};
 
 #[test]
 fn export_and_delete_user_data() {
-    let dir = tempdir().unwrap();
-    let db_path = dir.path().to_str().unwrap().to_string();
-    let storage = RocksDBStorage::open(&db_path).unwrap();
+    let dir = must(tempdir());
+    let db_path = must_opt(dir.path().to_str(), "tempdir path not utf8").to_string();
+    let storage = must(RocksDBStorage::open(&db_path));
 
     // Insert a user (updated struct fields)
     let user = User {
@@ -20,12 +21,10 @@ fn export_and_delete_user_data() {
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
     };
-    storage
-        .put(format!("user:id:{}", user.id).as_bytes(), &user)
-        .unwrap();
-    storage
-        .put(format!("user:username:{}", user.username).as_bytes(), &user)
-        .unwrap();
+    must(storage
+        .put(format!("user:id:{}", user.id).as_bytes(), &user));
+    must(storage
+        .put(format!("user:username:{}", user.username).as_bytes(), &user));
 
     // Insert a session (updated struct)
     let rec = verseguy_auth::Session {
@@ -35,21 +34,19 @@ fn export_and_delete_user_data() {
         created_at: chrono::Utc::now(),
         expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
     };
-    storage
-        .put(format!("session:{}", rec.id).as_bytes(), &rec)
-        .unwrap();
+    must(storage
+        .put(format!("session:{}", rec.id).as_bytes(), &rec));
 
     // Export
-    let out = export_user_data(&storage, &user.id).unwrap();
+    let out = must(export_user_data(&storage, &user.id));
     assert!(out.contains("tester"));
 
     // Delete
-    let ok = delete_user_data(&storage, &user.id).unwrap();
+    let ok = must(delete_user_data(&storage, &user.id));
     assert!(ok);
 
     // Ensure deleted
-    let u_opt: Option<User> = storage
-        .get(format!("user:id:{}", user.id).as_bytes())
-        .unwrap();
+    let u_opt: Option<User> = must(storage
+        .get(format!("user:id:{}", user.id).as_bytes()));
     assert!(u_opt.is_none());
 }

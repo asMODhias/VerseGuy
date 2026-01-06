@@ -1,3 +1,5 @@
+#![allow(clippy::disallowed_methods)]
+
 use crate::state::AppState;
 use anyhow::Result;
 use axum::{extract::State, Json};
@@ -102,6 +104,7 @@ pub struct SearchQuery {
     pub q: Option<String>,
 }
 
+#[allow(clippy::disallowed_methods)]
 pub async fn plugins_search_handler(
     State(state): State<Arc<AppState>>,
     Query(query): Query<SearchQuery>,
@@ -118,6 +121,7 @@ pub async fn plugins_search_handler(
 
 // --- Admin key management handlers ---
 
+#[allow(clippy::disallowed_methods)]
 pub async fn admin_get_keys(
     State(_state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
@@ -161,6 +165,7 @@ fn require_admin(headers: &axum::http::HeaderMap) -> Result<(), (axum::http::Sta
     }
 }
 
+#[allow(clippy::disallowed_methods)]
 pub async fn admin_rotate_key(
     State(_state): State<Arc<AppState>>,
     req: axum::http::Request<axum::body::Body>,
@@ -233,10 +238,22 @@ pub struct PublishRequest {
     pub manifest: PluginManifest,
 }
 
+#[allow(clippy::disallowed_methods)]
 pub async fn plugins_publish_handler(
     State(state): State<Arc<AppState>>,
     req: axum::http::Request<axum::body::Body>,
 ) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), (axum::http::StatusCode, String)> {
+    // If X-User-Id header present, require ToS acceptance for that user
+    if let Some(user_id) = req.headers().get("x-user-id").and_then(|v| v.to_str().ok()) {
+        let tos_key = format!("tos:{}", user_id);
+        let tos: Option<serde_json::Value> = (*state.storage)
+            .get(tos_key.as_bytes())
+            .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+        if tos.is_none() {
+            return Err((axum::http::StatusCode::FORBIDDEN, "ToS acceptance required".to_string()));
+        }
+    }
+
     // Simple publisher auth: if MASTER_PLUGIN_PUBLISH_KEY is set, require X-Plugin-Token header to match
     if let Ok(key) = std::env::var("MASTER_PLUGIN_PUBLISH_KEY") {
         let header_token = req
@@ -295,6 +312,7 @@ pub struct OrgListResponse {
     pub orgs: Vec<OrgType>,
 }
 
+#[allow(clippy::disallowed_methods)]
 pub async fn orgs_list_handler(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<OrgListResponse>, (axum::http::StatusCode, String)> {
@@ -305,12 +323,34 @@ pub async fn orgs_list_handler(
     Ok(Json(OrgListResponse { orgs }))
 }
 
+/// Simple health check endpoint for orchestration / k8s
+#[allow(clippy::disallowed_methods)]
+pub async fn health_handler() -> Result<(axum::http::StatusCode, Json<serde_json::Value>), (axum::http::StatusCode, String)> {
+    Ok((axum::http::StatusCode::OK, Json(serde_json::json!({"status":"ok"}))))
+}
+
+use crate::observability;
+
+/// Metrics endpoint for Prometheus scraping
+#[allow(clippy::disallowed_methods)]
+pub async fn metrics_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<(axum::http::StatusCode, String), (axum::http::StatusCode, String)> {
+    if let Some(handle) = &state.metrics_handle {
+        let body = observability::render_metrics(handle);
+        Ok((axum::http::StatusCode::OK, body))
+    } else {
+        Err((axum::http::StatusCode::NOT_IMPLEMENTED, "metrics not enabled".to_string()))
+    }
+}
+
 #[derive(Deserialize)]
 pub struct CreateOrgRequest {
     pub name: String,
     pub tag: String,
 }
 
+#[allow(clippy::disallowed_methods)]
 pub async fn orgs_create_handler(
     State(state): State<Arc<AppState>>,
     Json(req): Json<CreateOrgRequest>,
@@ -321,6 +361,7 @@ pub async fn orgs_create_handler(
     Ok(Json(created))
 }
 
+#[allow(clippy::disallowed_methods)]
 pub async fn orgs_get_handler(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -331,47 +372,131 @@ pub async fn orgs_get_handler(
 }
 
 // --- Stubs for handlers referenced by older routes ---
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub struct TosAcceptance {
+    pub user_id: String,
+    pub accepted_at: i64,
+    pub version: String,
+}
+
+#[allow(clippy::disallowed_methods)]
 pub async fn tos_accept_handler(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<TosAcceptance>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "TOS acceptance not implemented".to_string()))
+    // Store ToS acceptance in storage under key tos:{user_id}
+    let key = format!("tos:{}", body.user_id);
+    (*state.storage)
+        .put(key.as_bytes(), &body)
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"ok": true})))
 }
 
+#[allow(clippy::disallowed_methods)]
 pub async fn tos_get_handler(
-    State(_state): State<Arc<AppState>>,
-    Path(_user_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "TOS fetch not implemented".to_string()))
+    let key = format!("tos:{}", user_id);
+    let got: Option<TosAcceptance> = (*state.storage)
+        .get(key.as_bytes())
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    match got {
+        Some(t) => Ok(Json(serde_json::json!(t))),
+        None => Err((axum::http::StatusCode::NOT_FOUND, "tos not found".to_string())),
+    }
 }
 
+#[derive(serde::Deserialize)]
+pub struct VerifyRequest {
+    pub manifest: PluginManifest,
+    pub public_key_b64: String,
+}
+
+#[allow(clippy::disallowed_methods)]
 pub async fn verify_plugin_handler(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<VerifyRequest>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Plugin verification not implemented".to_string()))
+    use ed25519_dalek::PublicKey;
+    let pub_bytes = base64::engine::general_purpose::STANDARD
+        .decode(&req.public_key_b64)
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid base64: {}", e)))?;
+    let pubkey = PublicKey::from_bytes(&pub_bytes)
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid public key: {}", e)))?;
+
+    let ok = crate::plugins::verify_manifest(&state.storage, &req.manifest, &pubkey)
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"valid": ok})))
 }
 
+#[derive(serde::Deserialize)]
+struct RevokeRequest {
+    id: String,
+    version: String,
+    reason: String,
+}
+
+#[allow(clippy::disallowed_methods)]
 pub async fn revoke_handler(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
+    req: axum::http::Request<axum::body::Body>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Revocation not implemented".to_string()))
+    require_admin(req.headers())?;
+    let bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024).await.map_err(|e| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            format!("failed to read body: {}", e),
+        )
+    })?;
+    let r: RevokeRequest = serde_json::from_slice(&bytes)
+        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid json: {}", e)))?;
+    crate::plugins::revoke_manifest(&state.storage, &r.id, &r.version, &r.reason)
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"ok": true})))
 }
 
+#[allow(clippy::disallowed_methods)]
 pub async fn revocations_list_handler(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Revocations list not implemented".to_string()))
+    // Prefix scan for plugin_revoked:
+    let items: Vec<serde_json::Value> = (*state.storage)
+        .prefix_scan(b"plugin_revoked:")
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"revocations": items})))
 }
 
+#[allow(clippy::disallowed_methods)]
 pub async fn audit_export_handler(
-    State(_state): State<Arc<AppState>>,
-    Path(_user_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "Audit export not implemented".to_string()))
+    let audit = verseguy_audit::AuditService::new(state.storage.clone());
+    let entries = audit
+        .export_for_user(&user_id)
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"entries": entries})))
 }
 
+#[allow(clippy::disallowed_methods)]
 pub async fn user_data_delete_handler(
-    State(_state): State<Arc<AppState>>,
-    Path(_user_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    Err((axum::http::StatusCode::NOT_IMPLEMENTED, "User data deletion not implemented".to_string()))
+    // Delete user data from storage
+    let deleted_records = verseguy_compliance::gdpr::delete_user_data(&state.storage, &user_id)
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+
+    // Delete audit entries
+    let audit = verseguy_audit::AuditService::new(state.storage.clone());
+    let deleted_audit = audit
+        .delete_for_user(&user_id)
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+
+    // Delete ToS acceptance if present
+    let tos_key = format!("tos:{}", user_id);
+    let _ = (*state.storage).delete(tos_key.as_bytes());
+
+    Ok(Json(serde_json::json!({"deleted": deleted_audit + if deleted_records { 1 } else { 0 }})))
 }

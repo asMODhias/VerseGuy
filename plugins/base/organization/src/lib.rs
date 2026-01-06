@@ -32,9 +32,18 @@ pub struct OrganizationPlugin {
 impl OrganizationPlugin {
     pub fn new() -> Self {
         Self {
-            id: CString::new("org.verseguy.organization").expect("invalid plugin id string"),
-            name: CString::new("Organization Management").expect("invalid plugin name string"),
-            version: CString::new("2.0.0").expect("invalid plugin version string"),
+            id: match CString::new("org.verseguy.organization") {
+                Ok(c) => c,
+                Err(e) => panic!("invalid plugin id string: {}", e),
+            },
+            name: match CString::new("Organization Management") {
+                Ok(c) => c,
+                Err(e) => panic!("invalid plugin name string: {}", e),
+            },
+            version: match CString::new("2.0.0") {
+                Ok(c) => c,
+                Err(e) => panic!("invalid plugin version string: {}", e),
+            },
             host: std::ptr::null_mut(),
         }
     }

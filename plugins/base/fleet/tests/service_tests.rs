@@ -5,8 +5,8 @@ use plugins_base_fleet::types::{Ship, Loadout, Component, Insurance, ShipStatus}
 
 #[test]
 fn test_add_get_list_ship() {
-    let tmp = TempDir::new().expect("tmpdir");
-    let storage = Storage::open(tmp.path()).expect("open db");
+    let tmp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(Storage::open(tmp.path()));
     let svc = FleetService::new(storage.clone());
 
     let now = chrono::Utc::now();
@@ -25,19 +25,19 @@ fn test_add_get_list_ship() {
         updated_at: now,
     };
 
-    svc.add_ship(ship).expect("add ship");
+    verseguy_test_utils::must(svc.add_ship(ship));
 
-    let ships = svc.list_ships_for_owner("owner1").expect("list ships");
+    let ships = verseguy_test_utils::must(svc.list_ships_for_owner("owner1"));
     assert_eq!(ships.len(), 1);
 
-    let got = svc.get_ship("owner1", &ships[0].id).expect("get ship");
+    let got = verseguy_test_utils::must(svc.get_ship("owner1", &ships[0].id));
     assert!(got.is_some());
 }
 
 #[test]
 fn test_add_get_loadout() {
-    let tmp = TempDir::new().expect("tmpdir");
-    let storage = Storage::open(tmp.path()).expect("open db");
+    let tmp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(Storage::open(tmp.path()));
     let svc = FleetService::new(storage.clone());
 
     let now = chrono::Utc::now();
@@ -56,7 +56,7 @@ fn test_add_get_loadout() {
         updated_at: now,
     };
 
-    svc.add_ship(ship.clone()).expect("add ship");
+    verseguy_test_utils::must(svc.add_ship(ship.clone()));
 
     let loadout = Loadout {
         id: "".into(),
@@ -67,8 +67,8 @@ fn test_add_get_loadout() {
         updated_at: now,
     };
 
-    svc.add_loadout(loadout).expect("add loadout");
+    verseguy_test_utils::must(svc.add_loadout(loadout));
 
-    let loadouts = svc.get_loadouts_for_ship(&ship.id).expect("get loadouts");
+    let loadouts = verseguy_test_utils::must(svc.get_loadouts_for_ship(&ship.id));
     assert_eq!(loadouts.len(), 1);
 }

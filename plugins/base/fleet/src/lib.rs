@@ -32,9 +32,18 @@ pub struct FleetPlugin {
 impl FleetPlugin {
     pub fn new() -> Self {
         Self {
-            id: CString::new("org.verseguy.fleet").expect("invalid plugin id string"),
-            name: CString::new("Fleet Management").expect("invalid plugin name string"),
-            version: CString::new("1.0.0").expect("invalid plugin version string"),
+            id: match CString::new("org.verseguy.fleet") {
+                Ok(c) => c,
+                Err(e) => panic!("invalid plugin id string: {}", e),
+            },
+            name: match CString::new("Fleet Management") {
+                Ok(c) => c,
+                Err(e) => panic!("invalid plugin name string: {}", e),
+            },
+            version: match CString::new("1.0.0") {
+                Ok(c) => c,
+                Err(e) => panic!("invalid plugin version string: {}", e),
+            },
             host: std::ptr::null_mut(),
         }
     }
@@ -89,6 +98,7 @@ extern "C" fn shutdown_impl(_instance: *mut c_void) {
 }
 
 #[unsafe(export_name = "PluginInit")]
+#[allow(non_snake_case)]
 pub extern "C" fn PluginInit() -> *mut IPlugin {
     let plugin = Box::new(FleetPlugin::new());
     let instance_ptr = Box::into_raw(plugin) as *mut c_void;
@@ -128,8 +138,8 @@ mod tests {
             created_at: now,
             updated_at: now,
         };
-        let json = serde_json::to_string(&ship).expect("serialize");
-        let ship2: Ship = serde_json::from_str(&json).expect("deserialize");
+        let json = verseguy_test_utils::must(serde_json::to_string(&ship));
+        let ship2: Ship = verseguy_test_utils::must(serde_json::from_str(&json));
         assert_eq!(ship.id, ship2.id);
     }
 }

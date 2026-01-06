@@ -16,7 +16,18 @@
     "@playwright/test": "^1.39.0",
     "react-scripts": "5.0.1",
     "@types/react": "^18.2.20",
-    "@types/react-dom": "^18.2.7"
+    "@types/react-dom": "^18.2.7",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/jest-dom": "^6.0.0",
+    "vitest": "^0.34.0",
+    "jsdom": "^22.1.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jest-environment-jsdom",
+    "test:e2e": "playwright test",
+    "test:unit": "vitest run -c vitest.config.ts"
   },
   "browserslist": {
     "production": [

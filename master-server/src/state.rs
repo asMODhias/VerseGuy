@@ -6,6 +6,8 @@ pub struct AppState {
     pub storage: Arc<RocksDBStorage>,
     pub license_secret: Vec<u8>,
     pub keypair: Option<Keypair>,
+    /// Optional Prometheus metrics handle used by the /metrics endpoint
+    pub metrics_handle: Option<metrics_exporter_prometheus::PrometheusHandle>,
 }
 
 impl AppState {
@@ -29,6 +31,7 @@ impl AppState {
             storage: Arc::new(storage),
             license_secret,
             keypair,
+            metrics_handle: None,
         })
     }
 }
