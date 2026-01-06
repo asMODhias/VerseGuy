@@ -1,6 +1,7 @@
 use anyhow::Result;
 use opentelemetry::trace::{Tracer, Span};
 use opentelemetry::{global, KeyValue};
+use opentelemetry_sdk::{trace as sdktrace, Resource};
 use opentelemetry_otlp::WithExportConfig;
 use reqwest::Client;
 use serde_json::Value;
@@ -15,16 +16,29 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
 
     // Unique id to search for in Jaeger
     let test_id = Uuid::new_v4().to_string();
+    // Verbose debug: set TELEMETRY_DEBUG=1 to show all steps
+    let debug = std::env::var("TELEMETRY_DEBUG").is_ok();
+    if debug {
+        eprintln!("TEST DEBUG ENABLED");
+        eprintln!("OTLP_ENDPOINT={} JAEGER_QUERY_URL={}", otlp_endpoint, jaeger_query);
+    }
 
-    // Build OTLP exporter -> Collector
+    // Build OTLP exporter -> Collector using gRPC (tonic) to OTLP gRPC port 4317
     let exporter = opentelemetry_otlp::new_exporter()
         .tonic()
         .with_endpoint(otlp_endpoint.clone());
 
-    let _tracer_provider = opentelemetry_otlp::new_pipeline()
+    use opentelemetry_sdk::trace as sdktrace;
+    use opentelemetry_sdk::Resource;
+
+    let tracer_provider = opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(exporter)
-        .install_simple()?;
+        .with_trace_config(sdktrace::Config::default().with_resource(Resource::new(vec![KeyValue::new(
+            "service.name",
+            "telemetry-e2e",
+        )])))
+        .install_batch(opentelemetry_sdk::runtime::Tokio)?;
     let tracer = global::tracer("telemetry-e2e");
 
     // Diagnostic: check OTLP endpoint TCP reachability before sending spans
@@ -55,24 +69,51 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
         }
     }
     if !otlp_reachable {
-        eprintln!("Warning: OTLP endpoint does not appear reachable after {} attempts; continuing but test may fail.", connect_attempts);
+        eprintln!("Warning: OTLP endpoint does not appear reachable after {} attempts; trying HTTP port 4318 as a fallback check...", connect_attempts);
+        // Try HTTP port 4318 as a fallback readiness check for the collector
+        if let Some(stripped) = otlp_endpoint.strip_prefix("http://") {
+            if let Some((host, _)) = stripped.split_once(":") {
+                let http_url = format!("http://{}:4318/", host);
+                eprintln!("Checking HTTP collector endpoint {}", http_url);
+                let client = Client::new();
+                for j in 0..10 {
+                    match client.get(&http_url).send().await {
+                        Ok(resp) => {
+                            eprintln!("HTTP check status: {}", resp.status());
+                            otlp_reachable = true;
+                            break;
+                        }
+                        Err(e) => {
+                            eprintln!("HTTP probe {} failed: {}", j, e);
+                            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        }
+                    }
+                }
+            }
+        }
+        if !otlp_reachable {
+            eprintln!("OTLP not reachable via gRPC or HTTP fallback; continuing but expect failures");
+        } else {
+            eprintln!("Collector HTTP endpoint reachable via fallback; proceeding")
+        }
     }
 
     // Create a span with our test tag and attempt a couple times to ensure exporter receives it
-    eprintln!("Sending spans...");
+    if debug { eprintln!("Sending spans (3 attempts)"); }
     for i in 0..3 {
+        if debug { eprintln!("creating span attempt {}", i); }
         let mut span = tracer.start("test-span");
         span.set_attribute(KeyValue::new("test_id", test_id.clone()));
         drop(span);
-        eprintln!("Sent span attempt {}", i);
+        if debug { eprintln!("span created attempt {}", i); }
         // small ramp between attempts
         tokio::time::sleep(std::time::Duration::from_millis(200 * (i + 1))).await;
     }
 
     // Ensure exporter flushes
-    eprintln!("Calling shutdown_tracer_provider...");
+    if debug { eprintln!("Calling shutdown_tracer_provider..."); }
     global::shutdown_tracer_provider();
-    eprintln!("shutdown_tracer_provider done");
+    if debug { eprintln!("shutdown_tracer_provider done"); }
 
     // Poll Jaeger query API for the trace containing our test_id with exponential backoff + jitter
     let client = Client::new();
@@ -97,6 +138,8 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
         .and_then(|s| s.parse().ok())
         .unwrap_or(30_000);
 
+    eprintln!("Starting poll: attempts={}, initial_backoff_ms={}, max_backoff_ms={}, total_timeout_ms={}", attempts, initial_backoff_ms, max_backoff_ms, total_timeout_ms);
+
     let poll_future = async {
         let mut found_local = false;
         let mut last_body_local: Option<String> = None;
@@ -104,6 +147,7 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
         let mut unreachable_streak: u32 = 0u32;
 
         for attempt in 0..attempts {
+            eprintln!("poll attempt {}", attempt);
             // Small readiness check for Jaeger
             if let Ok(resp) = client
                 .get(format!("{}/api/services", jaeger_query))
@@ -134,9 +178,11 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
             ];
 
             for url in urls {
+                if debug { eprintln!("poll attempt {}: querying {}", attempt, url); }
                 if let Ok(resp) = client.get(&url).send().await {
                     let status = resp.status();
                     let text = resp.text().await.unwrap_or_default();
+                    if debug { eprintln!("response status {} length {}", status, text.len()); }
                     if status.is_success() {
                         if let Ok(json) = serde_json::from_str::<Value>(&text) {
                             if let Some(arr) = json.get("data").and_then(|d| d.as_array()) {
@@ -151,6 +197,7 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
                                                         if tag.get("value").and_then(|v| v.as_str())
                                                             == Some(&test_id)
                                                         {
+                                                            if debug { eprintln!("found trace in response on attempt {}", attempt); }
                                                             found_local = true;
                                                             attempts_used_local = Some(attempt + 1);
                                                             break 'outer;
@@ -161,6 +208,8 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
                                         }
                                     }
                                 }
+                            } else {
+                                if debug { eprintln!("no data array present in response") }
                             }
                         } else {
                             last_body_local = Some(text);
