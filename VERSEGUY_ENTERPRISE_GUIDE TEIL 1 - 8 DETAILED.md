@@ -4665,7 +4665,7 @@ Scalability:
   ✅ Horizontal scaling ready
 
 Missing:
-  ⚠️  Migration system (TODO: Next iteration)
+  ✅  Migration system skeleton implemented (`crates/migrations`) — CLI `verseguy-migrate` supports apply/rollback and records applied migrations.
   ⚠️  Backup/restore automation
   ⚠️  Full-text search
   ⚠️  Replication support
