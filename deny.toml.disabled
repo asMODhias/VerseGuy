@@ -1,10 +1,9 @@
 # cargo-deny configuration - enforce security and license checks
-[checks]
-# Fail the build if cargo-audit finds any advisories
+# Minimal valid configuration for current cargo-deny: top-level keys are expected
 advisories = { deny = ["RUSTSEC-0000-0000"], ignore = [] }
 # Disallow yanked crates
 yanked = { deny = true }
 
-[license]
+[licenses]
 # Example: require that dependencies are compatible with MIT/Apache-2.0
 # (leave default empty to not block for now)
