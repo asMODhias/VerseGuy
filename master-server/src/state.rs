@@ -1,4 +1,4 @@
-use ed25519_dalek::Keypair;
+use crate::ed25519_compat::Keypair;
 use std::sync::Arc;
 use verseguy_storage::RocksDBStorage;
 
