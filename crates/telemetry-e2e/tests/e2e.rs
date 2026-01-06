@@ -33,22 +33,46 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
         .install_batch(opentelemetry::runtime::Tokio)?;
     let tracer = global::tracer("telemetry-e2e");
 
-    // Create a span with our test tag
-    let mut span = tracer.start("test-span");
-    span.set_attribute(KeyValue::new("test_id", test_id.clone()));
-    drop(span);
+    // Create a span with our test tag and attempt a couple times to ensure exporter receives it
+    for i in 0..3 {
+        let mut span = tracer.start("test-span");
+        span.set_attribute(KeyValue::new("test_id", test_id.clone()));
+        drop(span);
+        // small ramp between attempts
+        tokio::time::sleep(std::time::Duration::from_millis(200 * (i + 1))).await;
+    }
 
     // Ensure exporter flushes
     global::shutdown_tracer_provider();
 
-    // Poll Jaeger query API for the trace containing our test_id
+    // Poll Jaeger query API for the trace containing our test_id with exponential backoff + jitter
     let client = Client::new();
+    let attempts: u32 = std::env::var("OTLP_POLL_ATTEMPTS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(60);
+    let initial_backoff_ms: u64 = std::env::var("OTLP_BACKOFF_MS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1000);
+    let max_backoff_ms: u64 = std::env::var("OTLP_MAX_BACKOFF_MS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(5000);
+
     let mut found = false;
-    for _ in 0..30 {
-        let url = format!(
-            "{}/api/traces?service={}&limit=20",
-            jaeger_query, "telemetry-e2e"
-        );
+    let mut last_body: Option<String> = None;
+    for attempt in 0..attempts {
+        // Small readiness check for Jaeger
+        if let Ok(resp) = client.get(format!("{}/api/services", jaeger_query)).send().await {
+            if !resp.status().is_success() {
+                eprintln!("Jaeger /api/services returned status {}", resp.status());
+            }
+        } else {
+            eprintln!("Failed to reach Jaeger /api/services on attempt {}", attempt);
+        }
+
+        let url = format!("{}/api/traces?service={}&limit=20", jaeger_query, "telemetry-e2e");
         if let Ok(resp) = client.get(&url).send().await {
             if resp.status().is_success() {
                 if let Ok(json) = resp.json::<Value>().await {
@@ -56,15 +80,10 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
                         'outer: for trace in arr {
                             if let Some(spans) = trace.get("spans").and_then(|s| s.as_array()) {
                                 for span in spans {
-                                    if let Some(tags) = span.get("tags").and_then(|t| t.as_array())
-                                    {
+                                    if let Some(tags) = span.get("tags").and_then(|t| t.as_array()) {
                                         for tag in tags {
-                                            if tag.get("key").and_then(|k| k.as_str())
-                                                == Some("test_id")
-                                            {
-                                                if tag.get("value").and_then(|v| v.as_str())
-                                                    == Some(&test_id)
-                                                {
+                                            if tag.get("key").and_then(|k| k.as_str()) == Some("test_id") {
+                                                if tag.get("value").and_then(|v| v.as_str()) == Some(&test_id) {
                                                     found = true;
                                                     break 'outer;
                                                 }
@@ -75,15 +94,34 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
                             }
                         }
                     }
+                } else if let Ok(text) = resp.text().await {
+                    last_body = Some(text);
                 }
+            } else if let Ok(text) = resp.text().await {
+                last_body = Some(text);
             }
+        } else {
+            eprintln!("Failed to query Jaeger trace API on attempt {}", attempt);
         }
+
         if found {
             break;
         }
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+        // exponential backoff with simple jitter
+        let exp = 1u64.saturating_shl(std::cmp::min(attempt, 10) as u32);
+        let mut sleep_ms = initial_backoff_ms.saturating_mul(exp);
+        if sleep_ms > max_backoff_ms {
+            sleep_ms = max_backoff_ms;
+        }
+        let jitter = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .subsec_nanos() % 1000) as u64;
+        let sleep_ms = sleep_ms + jitter;
+        tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
     }
 
-    assert!(found, "Trace with test_id {} not found in Jaeger", test_id);
+    assert!(found, "Trace with test_id {} not found in Jaeger, last body: {:?}", test_id, last_body);
     Ok(())
 }

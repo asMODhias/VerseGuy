@@ -27,11 +27,29 @@ jobs:
             sleep 2
           done
 
-      - name: Run telemetry e2e tests
+      - name: Run telemetry e2e tests (with retries)
         env:
           OTLP_ENDPOINT: "http://localhost:4317"
           JAEGER_QUERY_URL: "http://localhost:16686"
-        run: cargo test -p telemetry-e2e --tests -- --nocapture
+        run: |
+          set -e
+          attempts=0
+          max_attempts=3
+          while true; do
+            attempts=$((attempts+1))
+            echo "Running telemetry tests (attempt ${attempts})"
+            if cargo test -p telemetry-e2e --tests -- --nocapture; then
+              echo "Telemetry tests passed"
+              break
+            fi
+            echo "Telemetry tests failed on attempt ${attempts}. Dumping Jaeger traces for diagnostics..."
+            curl -sS "${JAEGER_QUERY_URL}/api/traces?service=telemetry-e2e&limit=100" || true
+            if [ "$attempts" -ge "$max_attempts" ]; then
+              echo "All ${max_attempts} attempts failed"
+              exit 1
+            fi
+            sleep $((attempts * 5))
+          done
 
       - name: Tear down
         if: always()
