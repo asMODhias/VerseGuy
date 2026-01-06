@@ -4666,7 +4666,7 @@ Scalability:
 
 Missing:
   ✅  Migration system skeleton implemented (`crates/migrations`) — CLI `verseguy-migrate` supports apply/rollback and records applied migrations.
-  ⚠️  Backup/restore automation
+  ✅  Backup/Restore skeleton implemented (`BackupService` in `containers/storage`) — supports create and restore tar.gz archives (tests included)
   ⚠️  Full-text search
   ⚠️  Replication support
 
