@@ -7,6 +7,11 @@ on:
 jobs:
   telemetry-integration:
     runs-on: ubuntu-latest
+    env:
+      OTLP_POLL_ATTEMPTS: '180'
+      OTLP_BACKOFF_MS: '1000'
+      OTLP_MAX_BACKOFF_MS: '5000'
+      OTLP_TOTAL_TIMEOUT_MS: '180000'
     steps:
       - uses: actions/checkout@v4
 
