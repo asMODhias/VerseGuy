@@ -23,10 +23,16 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
         eprintln!("OTLP_ENDPOINT={} JAEGER_QUERY_URL={}", otlp_endpoint, jaeger_query);
     }
 
-    // Build OTLP exporter -> Collector using gRPC (tonic) to OTLP gRPC port 4317
-    let exporter = opentelemetry_otlp::new_exporter()
-        .tonic()
-        .with_endpoint(otlp_endpoint.clone());
+    // Choose exporter: gRPC (default) or HTTP (if OTLP_USE_HTTP=1)
+    let use_http = std::env::var("OTLP_USE_HTTP").is_ok();
+    if debug { eprintln!("OTLP_USE_HTTP={}", use_http); }
+    let exporter = if use_http {
+        if debug { eprintln!("Using OTLP HTTP exporter -> {}/v1/traces", otlp_endpoint.trim_end_matches('/')); }
+        opentelemetry_otlp::new_exporter().http().with_endpoint(format!("{}/v1/traces", otlp_endpoint.trim_end_matches('/')))
+    } else {
+        if debug { eprintln!("Using OTLP gRPC exporter -> {}", otlp_endpoint); }
+        opentelemetry_otlp::new_exporter().tonic().with_endpoint(otlp_endpoint.clone())
+    };
 
     use opentelemetry_sdk::trace as sdktrace;
     use opentelemetry_sdk::Resource;
