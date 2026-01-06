@@ -3944,12 +3944,13 @@ impl StorageEngine {
             
             info!("Generated new encryption key");
             
-            // TODO: Store key securely (e.g., in system keyring)
-            // For now, log warning
-            tracing::warn!(
-                "Encryption key generated but not persisted. \
-                Set 'encryption_key' in config to persist."
-            );
+            // Persist key securely using the system keyring (Windows Credential Manager, macOS Keychain, Linux libsecret)
+            // Implementation: `containers/storage/src/secrets.rs` provides `store_encryption_key` / `load_encryption_key`.
+            match keyring::Entry::new("verseguy", "encryption_key").set_password(&base64::encode(&key)) {
+                Ok(()) => info!("Encryption key persisted to system keyring"),
+                Err(e) => tracing::warn!(error = %e, "Failed to persist encryption key to system keyring; not persisted")
+            }
+
             
             Ok(key)
         }
