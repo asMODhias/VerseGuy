@@ -2008,7 +2008,7 @@ Production Ready:
   ✅ Graceful shutdown
 
 Missing:
-  ⚠️  Unit tests (TODO: Add in next iteration)
+  ✅  OpenTelemetry end-to-end tests (CI: Jaeger + Collector) — see `.github/workflows/telemetry-integration.yml`
   ⚠️  Integration tests
   ⚠️  Benchmark tests
 
