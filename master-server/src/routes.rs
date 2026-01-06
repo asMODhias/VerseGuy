@@ -422,7 +422,9 @@ pub async fn verify_plugin_handler(
     let pub_bytes = base64::engine::general_purpose::STANDARD
         .decode(&req.public_key_b64)
         .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid base64: {}", e)))?;
-    let pubkey = PublicKey::from_bytes(&pub_bytes)
+    let mut pk_arr = [0u8; 32];
+    pk_arr.copy_from_slice(&pub_bytes[..32]);
+    let pubkey = PublicKey::from_bytes(&pk_arr)
         .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid public key: {}", e)))?;
 
     let ok = crate::plugins::verify_manifest(&state.storage, &req.manifest, &pubkey)
