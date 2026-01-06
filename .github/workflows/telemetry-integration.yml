@@ -51,6 +51,19 @@ jobs:
             sleep $((attempts * 5))
           done
 
+      - name: Show telemetry metrics
+        if: always()
+        run: |
+          if [ -f telemetry_e2e_metrics.json ]; then
+            echo "Telemetry metrics:"; cat telemetry_e2e_metrics.json; else echo "No metrics file found"; fi
+
+      - name: Upload telemetry metrics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-e2e-metrics
+          path: telemetry_e2e_metrics.json
+
       - name: Tear down
         if: always()
         run: docker compose -f .github/telemetry/docker-compose.yml down --volumes

@@ -60,8 +60,10 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
         .and_then(|s| s.parse().ok())
         .unwrap_or(5000);
 
+    let start = std::time::Instant::now();
     let mut found = false;
     let mut last_body: Option<String> = None;
+    let mut attempts_used: Option<u32> = None;
     for attempt in 0..attempts {
         // Small readiness check for Jaeger
         if let Ok(resp) = client.get(format!("{}/api/services", jaeger_query)).send().await {
@@ -85,6 +87,7 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
                                             if tag.get("key").and_then(|k| k.as_str()) == Some("test_id") {
                                                 if tag.get("value").and_then(|v| v.as_str()) == Some(&test_id) {
                                                     found = true;
+                                                    attempts_used = Some(attempt + 1);
                                                     break 'outer;
                                                 }
                                             }
@@ -120,6 +123,25 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
             .subsec_nanos() % 1000) as u64;
         let sleep_ms = sleep_ms + jitter;
         tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
+    }
+
+    let duration_ms = start.elapsed().as_millis();
+    let metrics = serde_json::json!({
+        "test_id": test_id,
+        "found": found,
+        "attempts": attempts_used.unwrap_or(attempts),
+        "duration_ms": duration_ms,
+        "last_body": last_body,
+        "timestamp_unix": std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0),
+    });
+    let metrics_path = std::env::var("TELEMETRY_METRICS_FILE").unwrap_or_else(|_| "telemetry_e2e_metrics.json".into());
+    if let Err(e) = std::fs::write(&metrics_path, serde_json::to_string_pretty(&metrics).unwrap()) {
+        eprintln!("Failed to write metrics file {}: {}", metrics_path, e);
+    } else {
+        eprintln!("Wrote metrics to {}", metrics_path);
     }
 
     assert!(found, "Trace with test_id {} not found in Jaeger, last body: {:?}", test_id, last_body);
