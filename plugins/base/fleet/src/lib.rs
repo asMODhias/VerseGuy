@@ -1,5 +1,5 @@
-pub mod types;
 pub mod service;
+pub mod types;
 
 pub use service::FleetService;
 
@@ -18,7 +18,7 @@ pub struct IPlugin {
     pub get_version: Option<extern "C" fn(*mut c_void) -> *const c_char>,
     pub get_required_capabilities: Option<extern "C" fn(*mut c_void) -> u64>,
     pub initialize: Option<extern "C" fn(*mut c_void, *mut c_void) -> bool>,
-    pub shutdown: Option<extern "C" fn(*mut c_void)> ,
+    pub shutdown: Option<extern "C" fn(*mut c_void)>,
     pub instance: *mut c_void,
 }
 

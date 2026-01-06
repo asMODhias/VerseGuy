@@ -1,5 +1,5 @@
-pub mod types;
 pub mod service;
+pub mod types;
 
 use std::ffi::CString;
 use std::os::raw::{c_char, c_void};
@@ -117,7 +117,7 @@ pub extern "C" fn PluginInit() -> *mut IPlugin {
 
 #[cfg(test)]
 mod tests {
-    use super::types::{Member, Organization, Rank, Permission};
+    use super::types::{Member, Organization, Permission, Rank};
     use chrono::Utc;
 
     #[test]
@@ -143,7 +143,14 @@ mod tests {
             joined_at: now,
             notes: None,
         };
-        let rank = Rank { id: "r1".into(), org_id: "org1".into(), name: "Admin".into(), level: 10, permissions: vec![Permission::ManageMembers], created_at: now };
+        let rank = Rank {
+            id: "r1".into(),
+            org_id: "org1".into(),
+            name: "Admin".into(),
+            level: 10,
+            permissions: vec![Permission::ManageMembers],
+            created_at: now,
+        };
         assert_eq!(org.id, "org1");
         assert_eq!(mem.org_id, "org1");
         assert_eq!(rank.org_id, "org1");

@@ -14,12 +14,14 @@ async fn create_and_get_latest_legal_doc() {
 
     // Use raw JSON string to avoid needing Serialize on the request type
     let req_json = r#"{"doc_type":"tos","version":"1.0.0","title":"Terms of Service","content":"These are the terms","author":"Legal Team"}"#;
-    let http_req = must(axum::http::Request::builder()
-        .method(axum::http::Method::POST)
-        .uri("/admin/legal/create")
-        .header("content-type", "application/json")
-        .header("x-admin-token", "admintoken")
-        .body(axum::body::Body::from(req_json)));
+    let http_req = must(
+        axum::http::Request::builder()
+            .method(axum::http::Method::POST)
+            .uri("/admin/legal/create")
+            .header("content-type", "application/json")
+            .header("x-admin-token", "admintoken")
+            .body(axum::body::Body::from(req_json)),
+    );
 
     match master_server::legal::admin_create_legal_handler(
         axum::extract::State(state.clone()),

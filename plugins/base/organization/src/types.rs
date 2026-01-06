@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct Organization {
     pub id: String,
     pub name: String,
-    pub tag: String,              // e.g., "TEST"
+    pub tag: String, // e.g., "TEST"
     pub description: String,
     pub founded: DateTime<Utc>,
     pub owner_id: String,
@@ -21,7 +21,7 @@ pub struct Member {
     pub id: String,
     pub org_id: String,
     pub user_id: String,
-    pub handle: String,           // Star Citizen handle
+    pub handle: String, // Star Citizen handle
     pub rank_id: String,
     pub joined_at: DateTime<Utc>,
     pub notes: Option<String>,
@@ -33,7 +33,7 @@ pub struct Rank {
     pub id: String,
     pub org_id: String,
     pub name: String,
-    pub level: i32,               // Higher = more senior
+    pub level: i32, // Higher = more senior
     pub permissions: Vec<Permission>,
     pub created_at: DateTime<Utc>,
 }
@@ -46,25 +46,25 @@ pub enum Permission {
     ManageMembers,
     InviteMembers,
     KickMembers,
-    
+
     // Ranks
     ViewRanks,
     ManageRanks,
     AssignRanks,
-    
+
     // Fleet
     ViewFleet,
     ManageFleet,
-    
+
     // Operations
     ViewOperations,
     ManageOperations,
     CreateOperations,
-    
+
     // Treasury (Pro+)
     ViewTreasury,
     ManageTreasury,
-    
+
     // Organization
     ManageOrganization,
     DeleteOrganization,

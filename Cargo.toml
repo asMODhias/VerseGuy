@@ -22,6 +22,7 @@ members = [
     "crates/shared/error",
     "crates/shared/test_utils",
     "crates/telemetry-e2e",
+    "crates/migrations",
 ]
 
 [workspace.package]

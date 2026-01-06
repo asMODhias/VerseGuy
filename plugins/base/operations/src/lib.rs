@@ -17,7 +17,7 @@ impl OperationsService {
     pub fn new(storage: Storage) -> Self {
         Self { storage }
     }
-    
+
     /// Create operation
     #[allow(clippy::too_many_arguments)]
     pub fn create_operation(
@@ -31,10 +31,10 @@ impl OperationsService {
         leader_id: String,
     ) -> Result<Operation> {
         info!("Creating operation: {}", title);
-        
+
         let operation_id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        
+
         let operation = Operation {
             id: operation_id.clone(),
             org_id: org_id.clone(),
@@ -49,60 +49,61 @@ impl OperationsService {
             created_at: now,
             updated_at: now,
         };
-        
+
         self.storage
             .put(keys::operation(&org_id, &operation_id), &operation)
             .context("Failed to save operation")?;
-        
+
         info!("Operation created: {}", operation_id);
-        
+
         Ok(operation)
     }
-    
+
     /// Get operation by ID
     pub fn get_operation(&self, org_id: &str, operation_id: &str) -> Result<Option<Operation>> {
         self.storage
             .get(keys::operation(org_id, operation_id))
             .context("Failed to get operation")
     }
-    
+
     /// List all operations for organization
     pub fn list_operations(&self, org_id: &str) -> Result<Vec<Operation>> {
-        let mut operations: Vec<Operation> = self.storage
+        let mut operations: Vec<Operation> = self
+            .storage
             .prefix_scan(keys::operations_prefix(org_id))
             .context("Failed to list operations")?;
-        
+
         // Sort by scheduled time (soonest first)
         operations.sort_by(|a, b| a.scheduled_at.cmp(&b.scheduled_at));
-        
+
         Ok(operations)
     }
-    
+
     /// Update operation
     pub fn update_operation(&self, operation: &Operation) -> Result<()> {
         debug!("Updating operation: {}", operation.title);
-        
+
         let mut updated = operation.clone();
         updated.updated_at = Utc::now();
-        
+
         self.storage
             .put(keys::operation(&operation.org_id, &operation.id), &updated)
             .context("Failed to update operation")?;
-        
+
         Ok(())
     }
-    
+
     /// Delete operation
     pub fn delete_operation(&self, org_id: &str, operation_id: &str) -> Result<()> {
         info!("Deleting operation: {}", operation_id);
-        
+
         self.storage
             .delete(keys::operation(org_id, operation_id))
             .context("Failed to delete operation")?;
-        
+
         Ok(())
     }
-    
+
     /// Add participant to operation
     pub fn add_participant(
         &self,
@@ -113,28 +114,29 @@ impl OperationsService {
         ship_id: Option<String>,
     ) -> Result<()> {
         debug!("Adding participant to operation: {}", user_id);
-        
-        let mut operation = self.get_operation(org_id, operation_id)?
+
+        let mut operation = self
+            .get_operation(org_id, operation_id)?
             .ok_or_else(|| anyhow::anyhow!("Operation not found"))?;
-        
+
         // Check if already participating
         if operation.participants.iter().any(|p| p.user_id == user_id) {
             anyhow::bail!("User already participating");
         }
-        
+
         let participant = Participant {
             user_id,
             role,
             ship_id,
             confirmed: false,
         };
-        
+
         operation.participants.push(participant);
         self.update_operation(&operation)?;
-        
+
         Ok(())
     }
-    
+
     /// Remove participant from operation
     pub fn remove_participant(
         &self,
@@ -143,16 +145,17 @@ impl OperationsService {
         user_id: &str,
     ) -> Result<()> {
         debug!("Removing participant from operation: {}", user_id);
-        
-        let mut operation = self.get_operation(org_id, operation_id)?
+
+        let mut operation = self
+            .get_operation(org_id, operation_id)?
             .ok_or_else(|| anyhow::anyhow!("Operation not found"))?;
-        
+
         operation.participants.retain(|p| p.user_id != user_id);
         self.update_operation(&operation)?;
-        
+
         Ok(())
     }
-    
+
     /// Confirm participation
     pub fn confirm_participant(
         &self,
@@ -161,20 +164,23 @@ impl OperationsService {
         user_id: &str,
     ) -> Result<()> {
         debug!("Confirming participant: {}", user_id);
-        
-        let mut operation = self.get_operation(org_id, operation_id)?
+
+        let mut operation = self
+            .get_operation(org_id, operation_id)?
             .ok_or_else(|| anyhow::anyhow!("Operation not found"))?;
-        
-        let participant = operation.participants.iter_mut()
+
+        let participant = operation
+            .participants
+            .iter_mut()
             .find(|p| p.user_id == user_id)
             .ok_or_else(|| anyhow::anyhow!("Participant not found"))?;
-        
+
         participant.confirmed = true;
         self.update_operation(&operation)?;
-        
+
         Ok(())
     }
-    
+
     /// Set operation status
     pub fn set_status(
         &self,
@@ -183,13 +189,14 @@ impl OperationsService {
         status: OperationStatus,
     ) -> Result<()> {
         debug!("Setting operation status: {:?}", status);
-        
-        let mut operation = self.get_operation(org_id, operation_id)?
+
+        let mut operation = self
+            .get_operation(org_id, operation_id)?
             .ok_or_else(|| anyhow::anyhow!("Operation not found"))?;
-        
+
         operation.status = status;
         self.update_operation(&operation)?;
-        
+
         Ok(())
     }
 }
@@ -199,18 +206,18 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
     use verseguy_test_utils::{must, must_opt};
-    
+
     fn setup() -> (TempDir, OperationsService) {
         let temp_dir = must(TempDir::new());
         let storage = must(Storage::open(temp_dir.path()));
         let service = OperationsService::new(storage);
         (temp_dir, service)
     }
-    
+
     #[test]
     fn test_create_operation() {
         let (_temp_dir, service) = setup();
-        
+
         let operation = must(service.create_operation(
             "org123".to_string(),
             "Mining Op".to_string(),
@@ -220,16 +227,16 @@ mod tests {
             120,
             "leader123".to_string(),
         ));
-        
+
         assert_eq!(operation.title, "Mining Op");
         assert_eq!(operation.operation_type, OperationType::Mining);
         assert_eq!(operation.status, OperationStatus::Planned);
     }
-    
+
     #[test]
     fn test_add_participant() {
         let (_temp_dir, service) = setup();
-        
+
         let operation = must(service.create_operation(
             "org123".to_string(),
             "Test Op".to_string(),
@@ -239,7 +246,7 @@ mod tests {
             60,
             "leader123".to_string(),
         ));
-        
+
         must(service.add_participant(
             &operation.org_id,
             &operation.id,
@@ -247,18 +254,18 @@ mod tests {
             "Pilot".to_string(),
             Some("ship123".to_string()),
         ));
-        
+
         let updated = must(service.get_operation(&operation.org_id, &operation.id));
         let updated = must_opt(updated, "operation not found");
-        
+
         assert_eq!(updated.participants.len(), 1);
         assert_eq!(updated.participants[0].role, "Pilot");
     }
-    
+
     #[test]
     fn test_confirm_participant() {
         let (_temp_dir, service) = setup();
-        
+
         let operation = must(service.create_operation(
             "org123".to_string(),
             "Test Op".to_string(),
@@ -268,7 +275,7 @@ mod tests {
             60,
             "leader123".to_string(),
         ));
-        
+
         must(service.add_participant(
             &operation.org_id,
             &operation.id,
@@ -276,12 +283,12 @@ mod tests {
             "Pilot".to_string(),
             None,
         ));
-        
+
         must(service.confirm_participant(&operation.org_id, &operation.id, "user123"));
-        
+
         let updated = must(service.get_operation(&operation.org_id, &operation.id));
         let updated = must_opt(updated, "operation not found");
-        
+
         assert!(updated.participants[0].confirmed);
     }
 }

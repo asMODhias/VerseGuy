@@ -21,14 +21,20 @@ pub mod network;
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::disallowed_methods, clippy::collapsible_if, clippy::single_match, clippy::manual_unwrap_or_default, clippy::let_unit_value)]
+    #![allow(
+        clippy::disallowed_methods,
+        clippy::collapsible_if,
+        clippy::single_match,
+        clippy::manual_unwrap_or_default,
+        clippy::let_unit_value
+    )]
     use super::*;
     use crate::local;
 
     use libp2p::swarm::Config as SwarmConfig;
     use libp2p::swarm::SwarmEvent;
-    use libp2p::{Swarm, ping};
     use libp2p::tcp::tokio as tcp_tokio;
+    use libp2p::{Swarm, ping};
     use std::time::Duration;
 
     async fn make_swarm() -> (Swarm<ping::Behaviour>, PeerId) {
@@ -63,7 +69,9 @@ mod tests {
 
         // listen on tcp on random port and log immediate listeners
         swarm
-            .listen_on(verseguy_test_utils::must("/ip4/127.0.0.1/tcp/0".parse::<_Multiaddr>() ))
+            .listen_on(verseguy_test_utils::must(
+                "/ip4/127.0.0.1/tcp/0".parse::<_Multiaddr>(),
+            ))
             .unwrap_or_else(|e| panic!("failed to listen on address: {}", e));
         let listeners: Vec<_> = swarm.listeners().collect();
         eprintln!("immediate listeners after listen_on: {:?}", listeners);
@@ -99,7 +107,10 @@ mod tests {
             }
         })
         .await;
-        let addr1 = match addr1 { Ok(a) => a, Err(_) => panic!("timed out waiting for s1 listen addr") };
+        let addr1 = match addr1 {
+            Ok(a) => a,
+            Err(_) => panic!("timed out waiting for s1 listen addr"),
+        };
 
         let addr2 = tokio::time::timeout(Duration::from_secs(6), async {
             loop {
@@ -116,7 +127,10 @@ mod tests {
             }
         })
         .await;
-        let addr2 = match addr2 { Ok(a) => a, Err(_) => panic!("timed out waiting for s2 listen addr") };
+        let addr2 = match addr2 {
+            Ok(a) => a,
+            Err(_) => panic!("timed out waiting for s2 listen addr"),
+        };
 
         use libp2p::multiaddr::Protocol;
         let mut d1 = addr1.clone();
@@ -505,6 +519,7 @@ mod tests {
         let res = match local::ping_addr(&addr).await {
             Ok(r) => r,
             Err(e) => panic!("ping addr failed: {}", e),
-        };        assert_eq!(res, "pong");
+        };
+        assert_eq!(res, "pong");
     }
 }

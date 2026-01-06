@@ -1,7 +1,12 @@
-#![allow(clippy::disallowed_methods, clippy::collapsible_if, clippy::single_match, clippy::manual_unwrap_or_default)]
-use std::time::Duration;
-use libp2p::{identity, PeerId, swarm::SwarmEvent, Transport};
+#![allow(
+    clippy::disallowed_methods,
+    clippy::collapsible_if,
+    clippy::single_match,
+    clippy::manual_unwrap_or_default
+)]
 use libp2p::core::multiaddr::Multiaddr;
+use libp2p::{PeerId, Transport, identity, swarm::SwarmEvent};
+use std::time::Duration;
 
 #[tokio::test]
 async fn mdns_discovery_and_dial() {
@@ -15,23 +20,47 @@ async fn mdns_discovery_and_dial() {
     let tcp_a = libp2p::tcp::tokio::Transport::new(libp2p::tcp::Config::default());
     let transport_a = tcp_a
         .upgrade(libp2p::core::upgrade::Version::V1)
-        .authenticate(verseguy_test_utils::must(libp2p::noise::Config::new(&key_a)))
+        .authenticate(verseguy_test_utils::must(libp2p::noise::Config::new(
+            &key_a,
+        )))
         .multiplex(libp2p::yamux::Config::default())
         .boxed();
 
     let tcp_b = libp2p::tcp::tokio::Transport::new(libp2p::tcp::Config::default());
     let transport_b = tcp_b
         .upgrade(libp2p::core::upgrade::Version::V1)
-        .authenticate(verseguy_test_utils::must(libp2p::noise::Config::new(&key_b)))
+        .authenticate(verseguy_test_utils::must(libp2p::noise::Config::new(
+            &key_b,
+        )))
         .multiplex(libp2p::yamux::Config::default())
         .boxed();
 
     // mdns behaviours
-    let mdns_a = verseguy_test_utils::must(libp2p_mdns::tokio::Behaviour::new(libp2p_mdns::Config::default(), peer_a));
-    let mdns_b = verseguy_test_utils::must(libp2p_mdns::tokio::Behaviour::new(libp2p_mdns::Config::default(), peer_b));
+    let mdns_a = verseguy_test_utils::must(libp2p_mdns::tokio::Behaviour::new(
+        libp2p_mdns::Config::default(),
+        peer_a,
+    ));
+    let mdns_b = verseguy_test_utils::must(libp2p_mdns::tokio::Behaviour::new(
+        libp2p_mdns::Config::default(),
+        peer_b,
+    ));
 
-    let mut swarm_a = libp2p::Swarm::new(transport_a, mdns_a, peer_a, libp2p::swarm::Config::with_executor(|fut| { tokio::spawn(fut); }));
-    let mut swarm_b = libp2p::Swarm::new(transport_b, mdns_b, peer_b, libp2p::swarm::Config::with_executor(|fut| { tokio::spawn(fut); }));
+    let mut swarm_a = libp2p::Swarm::new(
+        transport_a,
+        mdns_a,
+        peer_a,
+        libp2p::swarm::Config::with_executor(|fut| {
+            tokio::spawn(fut);
+        }),
+    );
+    let mut swarm_b = libp2p::Swarm::new(
+        transport_b,
+        mdns_b,
+        peer_b,
+        libp2p::swarm::Config::with_executor(|fut| {
+            tokio::spawn(fut);
+        }),
+    );
 
     // listen on tcp with ephemeral port (mdns runs on top of the host network; TCP listeners provide dialable addresses)
     let ma_a = verseguy_test_utils::must("/ip4/127.0.0.1/tcp/0".parse::<Multiaddr>());

@@ -1,6 +1,6 @@
+use crate::ed25519_compat::{Keypair, PublicKey};
 use anyhow::Result;
 use base64::{engine::general_purpose, Engine as _};
-use crate::ed25519_compat::{Keypair, PublicKey};
 use ed25519_dalek::{Signature, Verifier};
 use rand::rngs::OsRng;
 use std::fs;

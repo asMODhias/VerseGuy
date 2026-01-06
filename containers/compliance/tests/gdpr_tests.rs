@@ -16,15 +16,16 @@ fn export_and_delete_user_data() {
         username: "tester".to_string(),
         email: None,
         password_hash: Some("h".to_string()),
-        auth_method: AuthMethod::Local { username: "tester".to_string(), password_hash: "h".to_string() },
+        auth_method: AuthMethod::Local {
+            username: "tester".to_string(),
+            password_hash: "h".to_string(),
+        },
         license: License::Free,
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
     };
-    must(storage
-        .put(format!("user:id:{}", user.id).as_bytes(), &user));
-    must(storage
-        .put(format!("user:username:{}", user.username).as_bytes(), &user));
+    must(storage.put(format!("user:id:{}", user.id).as_bytes(), &user));
+    must(storage.put(format!("user:username:{}", user.username).as_bytes(), &user));
 
     // Insert a session (updated struct)
     let rec = verseguy_auth::Session {
@@ -34,8 +35,7 @@ fn export_and_delete_user_data() {
         created_at: chrono::Utc::now(),
         expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
     };
-    must(storage
-        .put(format!("session:{}", rec.id).as_bytes(), &rec));
+    must(storage.put(format!("session:{}", rec.id).as_bytes(), &rec));
 
     // Export
     let out = must(export_user_data(&storage, &user.id));
@@ -46,7 +46,6 @@ fn export_and_delete_user_data() {
     assert!(ok);
 
     // Ensure deleted
-    let u_opt: Option<User> = must(storage
-        .get(format!("user:id:{}", user.id).as_bytes()));
+    let u_opt: Option<User> = must(storage.get(format!("user:id:{}", user.id).as_bytes()));
     assert!(u_opt.is_none());
 }

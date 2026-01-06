@@ -1,5 +1,7 @@
 /// Small example library used to validate workspace setup
-pub fn add(a: i32, b: i32) -> i32 { a + b }
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
 
 #[cfg(test)]
 mod tests {

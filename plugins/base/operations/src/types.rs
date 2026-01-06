@@ -44,7 +44,7 @@ pub enum OperationStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Participant {
     pub user_id: String,
-    pub role: String,             // e.g., "Pilot", "Gunner", "Engineer"
+    pub role: String, // e.g., "Pilot", "Gunner", "Engineer"
     pub ship_id: Option<String>,
     pub confirmed: bool,
 }

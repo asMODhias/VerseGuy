@@ -14,7 +14,9 @@ fn parse_key_import_b64() {
     ];
     let cli = Cli::parse_from(args);
     match cli.cmd {
-        Commands::KeyImport { file: _, b64 } => assert_eq!(must_opt(b64, "missing b64"), "AAA".to_string()),
+        Commands::KeyImport { file: _, b64 } => {
+            assert_eq!(must_opt(b64, "missing b64"), "AAA".to_string())
+        }
         _ => panic!("unexpected cmd"),
     }
 }

@@ -1,9 +1,9 @@
 #![allow(clippy::disallowed_methods)]
 use tempfile::tempdir;
 
-use verseguy_storage::Storage;
-use verseguy_auth::{OAuthHandler};
+use verseguy_auth::OAuthHandler;
 use verseguy_auth::oauth_types::{OAuthConfig, OAuthProvider};
+use verseguy_storage::Storage;
 use verseguy_test_utils::must;
 
 #[tokio::test]

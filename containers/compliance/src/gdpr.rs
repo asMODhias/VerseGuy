@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde::Serialize;
-use verseguy_auth::{User, Session};
+use verseguy_auth::{Session, User};
 use verseguy_storage::RocksDBStorage;
 
 #[derive(Serialize)]

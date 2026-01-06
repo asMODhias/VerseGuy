@@ -8,7 +8,10 @@ fn sign_and_verify_roundtrip() {
     let manifest = dir.path().join("manifest.json");
     let sig = dir.path().join("manifest.sig");
     let key = dir.path().join("manifest.pub");
-    must(fs::write(&manifest, r#"{"id":"org.test","name":"t","version":"1"}"#));
+    must(fs::write(
+        &manifest,
+        r#"{"id":"org.test","name":"t","version":"1"}"#,
+    ));
 
     must(master_server::manifest_tool::sign_manifest(
         must_opt(manifest.to_str(), "manifest path not utf8"),
@@ -23,7 +26,10 @@ fn sign_and_verify_roundtrip() {
     ));
     assert!(ok);
     // tamper
-    must(fs::write(&manifest, r#"{"id":"org.test","name":"t2","version":"1"}"#));
+    must(fs::write(
+        &manifest,
+        r#"{"id":"org.test","name":"t2","version":"1"}"#,
+    ));
     let ok2 = must(master_server::manifest_tool::verify_manifest(
         must_opt(manifest.to_str(), "manifest path not utf8"),
         must_opt(sig.to_str(), "sig path not utf8"),

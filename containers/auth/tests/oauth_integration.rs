@@ -3,9 +3,9 @@
 
 use mockito::Server;
 use tempfile::tempdir;
-use verseguy_storage::Storage;
-use verseguy_auth::{OAuthHandler};
+use verseguy_auth::OAuthHandler;
 use verseguy_auth::oauth_types::{OAuthConfig, OAuthProvider};
+use verseguy_storage::Storage;
 use verseguy_test_utils::{must, must_opt};
 
 #[tokio::test]
@@ -21,7 +21,8 @@ async fn test_oauth_flow_with_mock() {
         .with_body(r#"{ "access_token": "mock_at", "refresh_token": "mock_rt", "expires_in": 3600, "token_type": "Bearer" }"#)
         .create();
 
-    let _m2 = server.mock("GET", "/userinfo")
+    let _m2 = server
+        .mock("GET", "/userinfo")
         .with_status(200)
         .with_header("content-type", "application/json")
         .with_body(r#"{ "id": "user123", "email": "test@example.com", "name": "Test User" }"#)
@@ -49,7 +50,13 @@ async fn test_oauth_flow_with_mock() {
         Ok(u) => u,
         Err(e) => panic!("failed to parse url: {}", e),
     };
-    let state = must_opt(parsed.query_pairs().find(|(k,_)| k=="state").map(|(_,v)| v.to_string()), "state param missing");
+    let state = must_opt(
+        parsed
+            .query_pairs()
+            .find(|(k, _)| k == "state")
+            .map(|(_, v)| v.to_string()),
+        "state param missing",
+    );
 
     // simulate callback with code (code first, state second)
     let user = match handler.handle_callback("fakecode".to_string(), state).await {

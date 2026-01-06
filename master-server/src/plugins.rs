@@ -1,7 +1,7 @@
+use crate::ed25519_compat::{Keypair, PublicKey};
 use anyhow::Result;
 use base64::{engine::general_purpose, Engine as _};
 use chrono::Utc;
-use crate::ed25519_compat::{Keypair, PublicKey};
 use ed25519_dalek::{Signature, Verifier};
 use serde::{Deserialize, Serialize};
 use verseguy_storage::RocksDBStorage;

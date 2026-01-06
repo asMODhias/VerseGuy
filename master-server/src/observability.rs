@@ -11,8 +11,7 @@ pub fn init_observability() -> Result<PrometheusHandle> {
 
     // Metrics: install a Prometheus recorder and return the handle
     // Use install_recorder if available which returns a PrometheusHandle directly
-    let handle = PrometheusBuilder::new()
-        .install_recorder()?;
+    let handle = PrometheusBuilder::new().install_recorder()?;
 
     Ok(handle)
 }

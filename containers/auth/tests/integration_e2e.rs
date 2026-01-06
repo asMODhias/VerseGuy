@@ -32,18 +32,15 @@ async fn register_login_create_and_validate_session() {
 
     // Create session and store it
     let session_service = SessionService::new(b"itest-secret".to_vec());
-    let token = match session_service
-        .create_and_store_session(&user.id, &License::Free, 7, &storage)
-    {
-        Ok(t) => t,
-        Err(e) => panic!("create_and_store_session failed: {}", e),
-    };
+    let token =
+        match session_service.create_and_store_session(&user.id, &License::Free, 7, &storage) {
+            Ok(t) => t,
+            Err(e) => panic!("create_and_store_session failed: {}", e),
+        };
     assert!(!token.is_empty());
 
     // Validate token and storage
-    let data = match session_service
-        .validate_token_and_storage(&token, &storage)
-    {
+    let data = match session_service.validate_token_and_storage(&token, &storage) {
         Ok(d) => d,
         Err(e) => panic!("validate_token_and_storage failed: {}", e),
     };
@@ -51,9 +48,10 @@ async fn register_login_create_and_validate_session() {
 
     // Ensure session record exists in storage
     let sid = data.claims.sid;
-    let rec: Option<verseguy_auth::session::SessionRecord> = match storage.get(format!("session:{}", sid).as_bytes()) {
-        Ok(r) => r,
-        Err(e) => panic!("storage.get failed: {}", e),
-    };
+    let rec: Option<verseguy_auth::session::SessionRecord> =
+        match storage.get(format!("session:{}", sid).as_bytes()) {
+            Ok(r) => r,
+            Err(e) => panic!("storage.get failed: {}", e),
+        };
     let _rec = verseguy_test_utils::must_opt(rec, "session not found");
 }

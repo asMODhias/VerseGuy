@@ -19,29 +19,35 @@ async fn starts_and_serves_plugins_search() {
     use axum::http::Request;
     use tower::util::ServiceExt; // for .oneshot()
 
-    let req: Request<axum::body::Body> = must(Request::builder()
-        .method("GET")
-        .uri("/plugins/search")
-        .body(axum::body::Body::empty()));
+    let req: Request<axum::body::Body> = must(
+        Request::builder()
+            .method("GET")
+            .uri("/plugins/search")
+            .body(axum::body::Body::empty()),
+    );
 
     let resp = must(app.clone().oneshot(req).await);
     let status = resp.status();
     assert!(status.is_success());
 
     // Health check
-    let req2: Request<axum::body::Body> = must(Request::builder()
-        .method("GET")
-        .uri("/healthz")
-        .body(axum::body::Body::empty()));
+    let req2: Request<axum::body::Body> = must(
+        Request::builder()
+            .method("GET")
+            .uri("/healthz")
+            .body(axum::body::Body::empty()),
+    );
 
     let resp2 = must(app.clone().oneshot(req2).await);
     assert!(resp2.status().is_success());
 
     // Metrics (may be enabled or not depending on initialization)
-    let req3: Request<axum::body::Body> = must(Request::builder()
-        .method("GET")
-        .uri("/metrics")
-        .body(axum::body::Body::empty()));
+    let req3: Request<axum::body::Body> = must(
+        Request::builder()
+            .method("GET")
+            .uri("/metrics")
+            .body(axum::body::Body::empty()),
+    );
 
     let _ = must(app.clone().oneshot(req3).await);
 }

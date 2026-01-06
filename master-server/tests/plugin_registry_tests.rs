@@ -2,10 +2,10 @@
 use axum::http::{Method, Request, Response};
 use master_server::build_app;
 use master_server::state::AppState;
+use serde_json::Value;
 use std::sync::Arc;
 use tower::util::ServiceExt;
 use verseguy_test_utils::{must, must_opt};
-use serde_json::Value;
 
 #[tokio::test]
 async fn publish_and_search_plugin() {
@@ -16,22 +16,28 @@ async fn publish_and_search_plugin() {
     let app = build_app(state.clone());
 
     // Publish
-    let manifest: Value = must(serde_json::from_str(r#"{ "manifest": { "id": "org.example.plugin", "name": "Example Plugin", "version": "1.0.0", "author": "Dev", "description": "Example", "published_at": null } }"#));
+    let manifest: Value = must(serde_json::from_str(
+        r#"{ "manifest": { "id": "org.example.plugin", "name": "Example Plugin", "version": "1.0.0", "author": "Dev", "description": "Example", "published_at": null } }"#,
+    ));
 
-    let req: Request<axum::body::Body> = must(Request::builder()
-        .method(Method::POST)
-        .uri("/plugins/publish")
-        .header("content-type", "application/json")
-        .body(axum::body::Body::from(manifest.to_string())));
+    let req: Request<axum::body::Body> = must(
+        Request::builder()
+            .method(Method::POST)
+            .uri("/plugins/publish")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(manifest.to_string())),
+    );
 
     let resp: Response<axum::body::Body> = must(app.clone().oneshot(req).await);
     assert_eq!(resp.status().as_u16(), 201);
 
     // Search
-    let req: Request<axum::body::Body> = must(Request::builder()
-        .method(Method::GET)
-        .uri("/plugins/search?q=Example")
-        .body(axum::body::Body::empty()));
+    let req: Request<axum::body::Body> = must(
+        Request::builder()
+            .method(Method::GET)
+            .uri("/plugins/search?q=Example")
+            .body(axum::body::Body::empty()),
+    );
 
     let resp: Response<axum::body::Body> = must(app.oneshot(req).await);
     assert!(resp.status().is_success());
@@ -39,10 +45,16 @@ async fn publish_and_search_plugin() {
     // axum::body::to_bytes requires a limit argument; use a generous limit (1MB)
     let body_bytes = must(axum::body::to_bytes(resp.into_body(), 1024 * 1024).await);
     let v: serde_json::Value = must(serde_json::from_slice(&body_bytes));
-    let results = must_opt(v.get("results").and_then(|r| r.as_array()), "no results array");
+    let results = must_opt(
+        v.get("results").and_then(|r| r.as_array()),
+        "no results array",
+    );
     assert_eq!(results.len(), 1);
     assert_eq!(
-        must_opt(results[0].get("id").and_then(|id| id.as_str()), "missing id"),
+        must_opt(
+            results[0].get("id").and_then(|id| id.as_str()),
+            "missing id"
+        ),
         "org.example.plugin"
     );
 }

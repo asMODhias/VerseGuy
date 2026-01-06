@@ -1,12 +1,12 @@
 use anyhow::{Context, Result};
 use futures::stream::StreamExt;
+use libp2p::core::upgrade;
 use libp2p::identity;
 use libp2p::ping;
-use libp2p::swarm::{SwarmEvent, Config as SwarmConfig};
-use libp2p::{PeerId, Swarm};
+use libp2p::swarm::{Config as SwarmConfig, SwarmEvent};
 use libp2p::tcp::tokio as tcp_tokio;
-use libp2p::core::upgrade;
 use libp2p::yamux::Config as YamuxConfig;
+use libp2p::{PeerId, Swarm};
 use std::collections::HashSet;
 use tokio::sync::{mpsc, oneshot};
 use tracing::debug;
@@ -15,7 +15,11 @@ use tracing::debug;
 pub enum P2PEvent {
     PeerConnected(PeerId),
     PeerDisconnected(PeerId),
-    MessageReceived { from: PeerId, topic: String, data: Vec<u8> },
+    MessageReceived {
+        from: PeerId,
+        topic: String,
+        data: Vec<u8>,
+    },
 }
 
 #[allow(dead_code)]
@@ -36,7 +40,12 @@ pub struct P2PNetwork {
 }
 
 impl P2PNetwork {
-    pub async fn new() -> Result<(Self, mpsc::UnboundedReceiver<P2PEvent>, libp2p::Multiaddr, PeerId)> {
+    pub async fn new() -> Result<(
+        Self,
+        mpsc::UnboundedReceiver<P2PEvent>,
+        libp2p::Multiaddr,
+        PeerId,
+    )> {
         // Create transport
         let keypair = identity::Keypair::generate_ed25519();
         let peer_id = PeerId::from(keypair.public());
@@ -44,7 +53,8 @@ impl P2PNetwork {
         // Use tokio TCP transport
         let tcp = tcp_tokio::Transport::new(libp2p::tcp::Config::default());
         use libp2p::Transport as _TransportTrait;
-        let noise_config = libp2p::noise::Config::new(&keypair).context("failed to create noise config")?;
+        let noise_config =
+            libp2p::noise::Config::new(&keypair).context("failed to create noise config")?;
         let transport = tcp
             .upgrade(upgrade::Version::V1)
             .authenticate(noise_config)
@@ -55,7 +65,14 @@ impl P2PNetwork {
         let ping_cfg = ping::Config::new();
         let behaviour = ping::Behaviour::new(ping_cfg);
 
-        let mut swarm = Swarm::new(transport, behaviour, peer_id, SwarmConfig::with_executor(|fut| { tokio::spawn(fut); }));
+        let mut swarm = Swarm::new(
+            transport,
+            behaviour,
+            peer_id,
+            SwarmConfig::with_executor(|fut| {
+                tokio::spawn(fut);
+            }),
+        );
         // Listen on localhost ephemeral port
         swarm.listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?;
 
@@ -126,7 +143,8 @@ impl P2PNetwork {
     }
 
     pub fn publish(&self, topic: &str, data: Vec<u8>) -> Result<()> {
-        self.ctrl_tx.send(Control::Publish(topic.to_string(), data))?;
+        self.ctrl_tx
+            .send(Control::Publish(topic.to_string(), data))?;
         Ok(())
     }
 

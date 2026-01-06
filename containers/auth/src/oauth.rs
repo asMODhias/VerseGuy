@@ -1,13 +1,13 @@
 use anyhow::{Context, Result};
 use reqwest::Client;
-use tracing::{info};
-use uuid::Uuid;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use tracing::info;
 use url::Url;
+use uuid::Uuid;
 
+use crate::oauth_types::{OAuthConfig, OAuthProvider, OAuthState, OAuthUserInfo, TokenResponse};
 use crate::types::{AuthMethod, License, User};
-use crate::oauth_types::{OAuthConfig, OAuthProvider, OAuthState, TokenResponse, OAuthUserInfo};
 use verseguy_storage::Storage;
 
 /// OAuth handler implementing Provider configs and state management
@@ -23,7 +23,10 @@ impl OAuthHandler {
     pub fn new(storage: Storage) -> Self {
         Self {
             storage,
-            client: match Client::builder().timeout(std::time::Duration::from_secs(30)).build() {
+            client: match Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+            {
                 Ok(c) => c,
                 Err(e) => panic!("Failed to build HTTP client: {}", e),
             },
@@ -47,9 +50,15 @@ impl OAuthHandler {
 
         let state = Uuid::new_v4().to_string();
         let now = chrono::Utc::now();
-        let s = OAuthState { state: state.clone(), provider, created_at: now };
+        let s = OAuthState {
+            state: state.clone(),
+            provider,
+            created_at: now,
+        };
         match self.states.write() {
-            Ok(mut states) => { states.insert(state.clone(), s); },
+            Ok(mut states) => {
+                states.insert(state.clone(), s);
+            }
             Err(e) => panic!("oauth states RwLock poisoned: {:?}", e),
         }
 
@@ -64,13 +73,15 @@ impl OAuthHandler {
         // Default scopes
         match provider {
             OAuthProvider::Google => {
-                url.query_pairs_mut().append_pair("scope", "openid email profile");
+                url.query_pairs_mut()
+                    .append_pair("scope", "openid email profile");
             }
             OAuthProvider::Discord => {
                 url.query_pairs_mut().append_pair("scope", "identify email");
             }
             OAuthProvider::Twitch => {
-                url.query_pairs_mut().append_pair("scope", "user:read:email");
+                url.query_pairs_mut()
+                    .append_pair("scope", "user:read:email");
             }
         }
 
@@ -85,7 +96,8 @@ impl OAuthHandler {
                 Ok(s) => s,
                 Err(e) => panic!("oauth states RwLock poisoned: {:?}", e),
             };
-            states.remove(&state)
+            states
+                .remove(&state)
                 .ok_or_else(|| anyhow::anyhow!("Invalid or expired state"))?
         };
 
@@ -124,7 +136,10 @@ impl OAuthHandler {
 
         let user = User {
             id: user_id.clone(),
-            username: user_info.name.clone().unwrap_or_else(|| format!("user_{}", &user_id[..8])),
+            username: user_info
+                .name
+                .clone()
+                .unwrap_or_else(|| format!("user_{}", &user_id[..8])),
             email: user_info.email.clone(),
             password_hash: None,
             auth_method: AuthMethod::OAuth {
@@ -139,14 +154,20 @@ impl OAuthHandler {
             updated_at: now,
         };
 
-        self.storage.put(user_id.as_bytes(), &user).context("Failed to save user")?;
-        self.storage.put(email_key.as_bytes(), &user_id).context("Failed to save OAuth mapping")?;
+        self.storage
+            .put(user_id.as_bytes(), &user)
+            .context("Failed to save user")?;
+        self.storage
+            .put(email_key.as_bytes(), &user_id)
+            .context("Failed to save OAuth mapping")?;
 
         Ok(user)
     }
 
     async fn exchange_code(&self, provider: OAuthProvider, code: String) -> Result<TokenResponse> {
-        let config = self.configs.get(&provider)
+        let config = self
+            .configs
+            .get(&provider)
             .ok_or_else(|| anyhow::anyhow!("Provider not configured"))?;
 
         let params = [
@@ -179,7 +200,11 @@ impl OAuthHandler {
         Ok(token)
     }
 
-    pub async fn refresh_token(&self, cfg: &OAuthConfig, refresh_token: &str) -> Result<TokenResponse> {
+    pub async fn refresh_token(
+        &self,
+        cfg: &OAuthConfig,
+        refresh_token: &str,
+    ) -> Result<TokenResponse> {
         let params = [
             ("client_id", cfg.client_id.clone()),
             ("client_secret", cfg.client_secret.clone()),
@@ -199,12 +224,22 @@ impl OAuthHandler {
             anyhow::bail!("Token refresh failed: {}", resp.status());
         }
 
-        let token = resp.json::<TokenResponse>().await.context("Failed to parse token response")?;
+        let token = resp
+            .json::<TokenResponse>()
+            .await
+            .context("Failed to parse token response")?;
         Ok(token)
     }
 
-    async fn get_user_info(&self, provider: OAuthProvider, access_token: &str) -> Result<OAuthUserInfo> {
-        let cfg = self.configs.get(&provider).ok_or_else(|| anyhow::anyhow!("Provider not configured"))?;
+    async fn get_user_info(
+        &self,
+        provider: OAuthProvider,
+        access_token: &str,
+    ) -> Result<OAuthUserInfo> {
+        let cfg = self
+            .configs
+            .get(&provider)
+            .ok_or_else(|| anyhow::anyhow!("Provider not configured"))?;
         let resp = self
             .client
             .get(&cfg.userinfo_url)
@@ -219,10 +254,7 @@ impl OAuthHandler {
             anyhow::bail!("Get user info failed: {} - {}", status, body);
         }
 
-        let user_info: OAuthUserInfo = resp
-            .json()
-            .await
-            .context("Failed to parse user info")?;
+        let user_info: OAuthUserInfo = resp.json().await.context("Failed to parse user info")?;
         Ok(user_info)
     }
 }

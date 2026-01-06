@@ -58,7 +58,13 @@ pub mod keys {
 
     /// Generate key for member
     pub fn member(org_id: &str, user_id: &str) -> Vec<u8> {
-        [prefixes::MEMBER, org_id.as_bytes(), b":", user_id.as_bytes()].concat()
+        [
+            prefixes::MEMBER,
+            org_id.as_bytes(),
+            b":",
+            user_id.as_bytes(),
+        ]
+        .concat()
     }
 
     /// Generate prefix for all members of org
@@ -78,7 +84,13 @@ pub mod keys {
 
     /// Generate key for ship
     pub fn ship(owner_id: &str, ship_id: &str) -> Vec<u8> {
-        [prefixes::SHIP, owner_id.as_bytes(), b":", ship_id.as_bytes()].concat()
+        [
+            prefixes::SHIP,
+            owner_id.as_bytes(),
+            b":",
+            ship_id.as_bytes(),
+        ]
+        .concat()
     }
 
     /// Generate prefix for all ships of owner
@@ -88,7 +100,13 @@ pub mod keys {
 
     /// Generate key for loadout
     pub fn loadout(ship_id: &str, loadout_id: &str) -> Vec<u8> {
-        [prefixes::LOADOUT, ship_id.as_bytes(), b":", loadout_id.as_bytes()].concat()
+        [
+            prefixes::LOADOUT,
+            ship_id.as_bytes(),
+            b":",
+            loadout_id.as_bytes(),
+        ]
+        .concat()
     }
 
     /// Generate prefix for all loadouts of ship
@@ -98,7 +116,13 @@ pub mod keys {
 
     /// Generate key for operation
     pub fn operation(org_id: &str, operation_id: &str) -> Vec<u8> {
-        [prefixes::OPERATION, org_id.as_bytes(), b":", operation_id.as_bytes()].concat()
+        [
+            prefixes::OPERATION,
+            org_id.as_bytes(),
+            b":",
+            operation_id.as_bytes(),
+        ]
+        .concat()
     }
 
     /// Generate prefix for all operations of org

@@ -1,7 +1,7 @@
+use plugins_base_fleet::service::FleetService;
+use plugins_base_fleet::types::{Component, Insurance, Loadout, Ship, ShipStatus};
 use tempfile::TempDir;
 use verseguy_storage::Storage;
-use plugins_base_fleet::service::FleetService;
-use plugins_base_fleet::types::{Ship, Loadout, Component, Insurance, ShipStatus};
 
 #[test]
 fn test_add_get_list_ship() {
@@ -62,7 +62,11 @@ fn test_add_get_loadout() {
         id: "".into(),
         ship_id: ship.id.clone(),
         name: "Default".into(),
-        components: vec![Component { slot: "Weapon_01".into(), item: "Ballistic".into(), manufacturer: Some("Aegis".into()) }],
+        components: vec![Component {
+            slot: "Weapon_01".into(),
+            item: "Ballistic".into(),
+            manufacturer: Some("Aegis".into()),
+        }],
         created_at: now,
         updated_at: now,
     };

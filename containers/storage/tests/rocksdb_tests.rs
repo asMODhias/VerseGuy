@@ -46,9 +46,18 @@ fn test_delete_and_prefix() {
     let temp_dir = must(TempDir::new());
     let db = must(RocksDBStorage::open(temp_dir.path()));
 
-    let a = TestItem { id: "1".into(), name: "A".into() };
-    let b = TestItem { id: "2".into(), name: "B".into() };
-    let c = TestItem { id: "3".into(), name: "C".into() };
+    let a = TestItem {
+        id: "1".into(),
+        name: "A".into(),
+    };
+    let b = TestItem {
+        id: "2".into(),
+        name: "B".into(),
+    };
+    let c = TestItem {
+        id: "3".into(),
+        name: "C".into(),
+    };
 
     must(db.put(b"user:1", &a));
     must(db.put(b"user:2", &b));

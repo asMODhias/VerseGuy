@@ -246,11 +246,18 @@ pub async fn plugins_publish_handler(
     // If X-User-Id header present, require ToS acceptance for that user
     if let Some(user_id) = req.headers().get("x-user-id").and_then(|v| v.to_str().ok()) {
         let tos_key = format!("tos:{}", user_id);
-        let tos: Option<serde_json::Value> = (*state.storage)
-            .get(tos_key.as_bytes())
-            .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+        let tos: Option<serde_json::Value> =
+            (*state.storage).get(tos_key.as_bytes()).map_err(|e| {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("{}", e),
+                )
+            })?;
         if tos.is_none() {
-            return Err((axum::http::StatusCode::FORBIDDEN, "ToS acceptance required".to_string()));
+            return Err((
+                axum::http::StatusCode::FORBIDDEN,
+                "ToS acceptance required".to_string(),
+            ));
         }
     }
 
@@ -302,10 +309,10 @@ pub async fn plugins_publish_handler(
 }
 
 // --- Organization endpoints ---
-use plugins_base_organization::service::OrganizationService;
-use plugins_base_organization::types::Organization as OrgType;
 use axum::extract::Path;
 use axum::http::StatusCode;
+use plugins_base_organization::service::OrganizationService;
+use plugins_base_organization::types::Organization as OrgType;
 
 #[derive(Serialize)]
 pub struct OrgListResponse {
@@ -325,8 +332,12 @@ pub async fn orgs_list_handler(
 
 /// Simple health check endpoint for orchestration / k8s
 #[allow(clippy::disallowed_methods)]
-pub async fn health_handler() -> Result<(axum::http::StatusCode, Json<serde_json::Value>), (axum::http::StatusCode, String)> {
-    Ok((axum::http::StatusCode::OK, Json(serde_json::json!({"status":"ok"}))))
+pub async fn health_handler(
+) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), (axum::http::StatusCode, String)> {
+    Ok((
+        axum::http::StatusCode::OK,
+        Json(serde_json::json!({"status":"ok"})),
+    ))
 }
 
 use crate::observability;
@@ -340,7 +351,10 @@ pub async fn metrics_handler(
         let body = observability::render_metrics(handle);
         Ok((axum::http::StatusCode::OK, body))
     } else {
-        Err((axum::http::StatusCode::NOT_IMPLEMENTED, "metrics not enabled".to_string()))
+        Err((
+            axum::http::StatusCode::NOT_IMPLEMENTED,
+            "metrics not enabled".to_string(),
+        ))
     }
 }
 
@@ -356,7 +370,8 @@ pub async fn orgs_create_handler(
     Json(req): Json<CreateOrgRequest>,
 ) -> Result<Json<OrgType>, (axum::http::StatusCode, String)> {
     let svc = OrganizationService::new((*state.storage).clone());
-    let created = svc.create_organization(req.name, req.tag, "".into(), "system".into())
+    let created = svc
+        .create_organization(req.name, req.tag, "".into(), "system".into())
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
     Ok(Json(created))
 }
@@ -367,7 +382,9 @@ pub async fn orgs_get_handler(
     Path(id): Path<String>,
 ) -> Result<Json<Option<OrgType>>, (axum::http::StatusCode, String)> {
     let svc = OrganizationService::new((*state.storage).clone());
-    let org = svc.get_organization(&id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let org = svc
+        .get_organization(&id)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
     Ok(Json(org))
 }
 
@@ -386,9 +403,12 @@ pub async fn tos_accept_handler(
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     // Store ToS acceptance in storage under key tos:{user_id}
     let key = format!("tos:{}", body.user_id);
-    (*state.storage)
-        .put(key.as_bytes(), &body)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    (*state.storage).put(key.as_bytes(), &body).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}", e),
+        )
+    })?;
     Ok(Json(serde_json::json!({"ok": true})))
 }
 
@@ -398,12 +418,18 @@ pub async fn tos_get_handler(
     Path(user_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     let key = format!("tos:{}", user_id);
-    let got: Option<TosAcceptance> = (*state.storage)
-        .get(key.as_bytes())
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let got: Option<TosAcceptance> = (*state.storage).get(key.as_bytes()).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}", e),
+        )
+    })?;
     match got {
         Some(t) => Ok(Json(serde_json::json!(t))),
-        None => Err((axum::http::StatusCode::NOT_FOUND, "tos not found".to_string())),
+        None => Err((
+            axum::http::StatusCode::NOT_FOUND,
+            "tos not found".to_string(),
+        )),
     }
 }
 
@@ -421,14 +447,28 @@ pub async fn verify_plugin_handler(
     use crate::ed25519_compat::PublicKey;
     let pub_bytes = base64::engine::general_purpose::STANDARD
         .decode(&req.public_key_b64)
-        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid base64: {}", e)))?;
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                format!("invalid base64: {}", e),
+            )
+        })?;
     let mut pk_arr = [0u8; 32];
     pk_arr.copy_from_slice(&pub_bytes[..32]);
-    let pubkey = PublicKey::from_bytes(&pk_arr)
-        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid public key: {}", e)))?;
+    let pubkey = PublicKey::from_bytes(&pk_arr).map_err(|e| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            format!("invalid public key: {}", e),
+        )
+    })?;
 
-    let ok = crate::plugins::verify_manifest(&state.storage, &req.manifest, &pubkey)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let ok =
+        crate::plugins::verify_manifest(&state.storage, &req.manifest, &pubkey).map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("{}", e),
+            )
+        })?;
     Ok(Json(serde_json::json!({"valid": ok})))
 }
 
@@ -445,16 +485,26 @@ pub async fn revoke_handler(
     req: axum::http::Request<axum::body::Body>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     require_admin(req.headers())?;
-    let bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024).await.map_err(|e| {
+    let bytes = axum::body::to_bytes(req.into_body(), 1024 * 1024)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                format!("failed to read body: {}", e),
+            )
+        })?;
+    let r: RevokeRequest = serde_json::from_slice(&bytes).map_err(|e| {
         (
             axum::http::StatusCode::BAD_REQUEST,
-            format!("failed to read body: {}", e),
+            format!("invalid json: {}", e),
         )
     })?;
-    let r: RevokeRequest = serde_json::from_slice(&bytes)
-        .map_err(|e| (axum::http::StatusCode::BAD_REQUEST, format!("invalid json: {}", e)))?;
-    crate::plugins::revoke_manifest(&state.storage, &r.id, &r.version, &r.reason)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    crate::plugins::revoke_manifest(&state.storage, &r.id, &r.version, &r.reason).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}", e),
+        )
+    })?;
     Ok(Json(serde_json::json!({"ok": true})))
 }
 
@@ -463,9 +513,15 @@ pub async fn revocations_list_handler(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     // Prefix scan for plugin_revoked:
-    let items: Vec<serde_json::Value> = (*state.storage)
-        .prefix_scan(b"plugin_revoked:")
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let items: Vec<serde_json::Value> =
+        (*state.storage)
+            .prefix_scan(b"plugin_revoked:")
+            .map_err(|e| {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("{}", e),
+                )
+            })?;
     Ok(Json(serde_json::json!({"revocations": items})))
 }
 
@@ -475,9 +531,12 @@ pub async fn audit_export_handler(
     Path(user_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     let audit = verseguy_audit::AuditService::new(state.storage.clone());
-    let entries = audit
-        .export_for_user(&user_id)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let entries = audit.export_for_user(&user_id).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}", e),
+        )
+    })?;
     Ok(Json(serde_json::json!({"entries": entries})))
 }
 
@@ -488,17 +547,27 @@ pub async fn user_data_delete_handler(
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     // Delete user data from storage
     let deleted_records = verseguy_compliance::gdpr::delete_user_data(&state.storage, &user_id)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("{}", e),
+            )
+        })?;
 
     // Delete audit entries
     let audit = verseguy_audit::AuditService::new(state.storage.clone());
-    let deleted_audit = audit
-        .delete_for_user(&user_id)
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let deleted_audit = audit.delete_for_user(&user_id).map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}", e),
+        )
+    })?;
 
     // Delete ToS acceptance if present
     let tos_key = format!("tos:{}", user_id);
     let _ = (*state.storage).delete(tos_key.as_bytes());
 
-    Ok(Json(serde_json::json!({"deleted": deleted_audit + if deleted_records { 1 } else { 0 }})))
+    Ok(Json(
+        serde_json::json!({"deleted": deleted_audit + if deleted_records { 1 } else { 0 }}),
+    ))
 }

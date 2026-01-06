@@ -106,7 +106,10 @@ impl AuditService {
     pub fn delete_for_user(&self, user_id: &str) -> Result<usize> {
         let items: Vec<AuditEntry> = self.db.prefix_scan(b"audit:")?;
         let mut deleted = 0usize;
-        for e in items.into_iter().filter(|e| e.user_id.as_deref() == Some(user_id)) {
+        for e in items
+            .into_iter()
+            .filter(|e| e.user_id.as_deref() == Some(user_id))
+        {
             let key = format!("audit:{}", e.id);
             self.db.delete(key.as_bytes())?;
             deleted += 1;
@@ -114,4 +117,3 @@ impl AuditService {
         Ok(deleted)
     }
 }
-

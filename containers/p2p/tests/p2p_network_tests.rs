@@ -1,7 +1,7 @@
 #![allow(clippy::disallowed_methods, clippy::collapsible_if)]
 use libp2p::multiaddr::Protocol;
 use std::time::Duration;
-use verseguy_p2p::network::{P2PNetwork, P2PEvent};
+use verseguy_p2p::network::{P2PEvent, P2PNetwork};
 
 #[tokio::test]
 async fn messages_between_two_peers() {
@@ -26,7 +26,9 @@ async fn messages_between_two_peers() {
             }
         }
         false
-    }).await.unwrap_or(false);
+    })
+    .await
+    .unwrap_or(false);
 
     assert!(got, "node_b did not observe connection to node_a");
 }

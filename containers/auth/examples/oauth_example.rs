@@ -1,5 +1,5 @@
-use verseguy_auth::{OAuthConfig, OAuthHandler};
 use verseguy_auth::oauth_types::OAuthProvider;
+use verseguy_auth::{OAuthConfig, OAuthHandler};
 use verseguy_storage::Storage;
 
 #[tokio::main]

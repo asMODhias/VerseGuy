@@ -27,7 +27,11 @@ fn sign_and_verify() {
 
     // verify
     let pubkey = must_opt(state.keypair.as_ref(), "missing keypair").public;
-    let ok = must(verify_manifest(&state.storage, &manifest.with_published(), &pubkey));
+    let ok = must(verify_manifest(
+        &state.storage,
+        &manifest.with_published(),
+        &pubkey,
+    ));
     assert!(ok);
 
     // revoke and ensure is_revoked returns true
