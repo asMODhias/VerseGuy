@@ -1,0 +1,36 @@
+[package]
+name = "verseguy_storage_infra"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Use workspace dependencies where possible
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+bincode = "1.3"
+uuid = { workspace = true, features = ["v4", "serde"] }
+chrono = { workspace = true, features = ["serde"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+metrics = { workspace = true }
+base64 = "0.21"
+lru = "0.12"
+anyhow = "1.0"
+rand = "0.8"
+keyring = "1.0"
+sha2 = "0.10"
+zeroize = "1.5"
+hex = "0.4"
+rocksdb = "0.20"
+
+# Local workspace crates (if present)
+verseguy_shared_error = { path = "../../shared/error" }
+
+# Async
+tokio = { workspace = true, features = ["sync", "time"] }
+
+[dev-dependencies]
+tempfile = "3.8"
+
+[features]
+default = []

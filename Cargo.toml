@@ -22,6 +22,7 @@ members = [
     "crates/shared/error",
     "crates/shared/test_utils",
     "crates/telemetry-e2e",
+    "crates/infrastructure/storage",
     "crates/migrations",
 ]
 
@@ -58,6 +59,10 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 
 # Database
 rocksdb = "0.21"
+
+# Metrics
+metrics = "0.21"
+metrics-exporter-prometheus = "0.13"
 
 # Authentication
 argon2 = "0.5"

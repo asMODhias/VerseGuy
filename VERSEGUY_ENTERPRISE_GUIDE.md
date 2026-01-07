@@ -4653,8 +4653,8 @@ Performance:
 
 Security:
   ✅ Encryption at rest (AES-256-GCM)
-  ✅ Secure key management
-  ✅ No plaintext storage
+  🔒 Secure key storage: in progress (KeyStore module — keyring + file fallback)
+  ✅ No plaintext storage (except secure fallback file when keyring unavailable)
   ✅ Memory wiping (SecretString)
 
 Scalability:
