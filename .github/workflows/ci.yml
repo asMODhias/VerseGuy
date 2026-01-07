@@ -38,6 +38,16 @@ jobs:
       - name: clippy
         run: cargo clippy --all-targets --all-features -- -D warnings -D clippy::unwrap_used
 
+      - name: Scan for unwrap/expect in production src
+        run: |
+          echo "Scanning for unwrap()/expect() in production source directories"
+          matches=$(git grep -n --line-number -E "(\.unwrap\(|\.expect\()" -- 'crates/**/src/**' 'core/src/**' || true)
+          # Exclude test directories from matches
+          filtered=$(echo "$matches" | grep -v '/tests/' || true)
+          if [ -n "$filtered" ]; then
+            echo "Found forbidden unwrap()/expect() usage in production code:"; echo "$filtered"; exit 1
+          fi
+
       - name: Run cargo tests
         run: cargo test --workspace --all-features --verbose
 
