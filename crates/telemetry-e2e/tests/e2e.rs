@@ -2,7 +2,6 @@ use anyhow::Result;
 use opentelemetry::trace::{Span, Tracer};
 use opentelemetry::{global, KeyValue};
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::{trace as sdktrace, Resource};
 use reqwest::Client;
 use serde_json::Value;
 use uuid::Uuid;
@@ -65,8 +64,7 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
             .with_exporter(
                 opentelemetry_otlp::new_exporter()
                     .tonic()
-                    .with_endpoint(otlp_endpoint.clone())
-                    .with_tls(false),
+                    .with_endpoint(otlp_endpoint.clone()),
             )
             .with_trace_config(
                 sdktrace::Config::default().with_resource(Resource::new(vec![KeyValue::new(
