@@ -331,10 +331,19 @@ pub fn extract_p4k_to_dir<P: AsRef<Path>, Q: AsRef<Path>>(p4k: P, outdir: Q) -> 
     // check unp4k availability
     let which = if cfg!(target_os = "windows") { "where" } else { "which" };
     let which_out = Command::new(which).arg("unp4k").output();
-    if which_out.is_err() || !which_out.unwrap().status.success() {
-        return Err(anyhow::anyhow!(
-            "`unp4k` not found in PATH. Please install https://github.com/dolkensp/unp4k and ensure it's on PATH."
-        ));
+    match which_out {
+        Ok(out) => {
+            if !out.status.success() {
+                return Err(anyhow::anyhow!(
+                    "`unp4k` not found in PATH. Please install https://github.com/dolkensp/unp4k and ensure it's on PATH."
+                ));
+            }
+        }
+        Err(_) => {
+            return Err(anyhow::anyhow!(
+                "`unp4k` not found in PATH. Please install https://github.com/dolkensp/unp4k and ensure it's on PATH."
+            ));
+        }
     }
 
     let outdirp = outdir.as_ref();
@@ -370,12 +379,13 @@ pub fn import_from_p4k<P: AsRef<Path>>(p4k: P, storage: &RocksDBStorage) -> Resu
 mod tests {
     use super::*;
     use tempfile::tempdir;
+    use verseguy_test_utils::{must, must_opt};
 
     #[test]
     fn import_sample_file() {
-        let dir = tempdir().unwrap();
+        let dir = must(tempdir());
         let dbpath = dir.path().join("db");
-        let storage = RocksDBStorage::open(dbpath).unwrap();
+        let storage = must(RocksDBStorage::open(dbpath));
 
         // prepare sample JSON
         let sample = r#"[
@@ -383,13 +393,13 @@ mod tests {
             {"id":"ship-b","name":"Ship B","role":"transport"}
         ]"#;
         let file = dir.path().join("sample.json");
-        std::fs::write(&file, sample).unwrap();
+        must(std::fs::write(&file, sample));
 
-        let n = import_from_file(file.to_str().unwrap(), &storage).unwrap();
+        let n = must(import_from_file(must_opt(file.to_str(), "file path not utf8"), &storage));
         assert_eq!(n, 2);
 
-        let s: Option<ScShip> = storage.get(b"scunpacked:ship:ship-a").unwrap();
-        assert!(s.is_some());
-        assert_eq!(s.unwrap().name, "Ship A");
+        let s: Option<ScShip> = must(storage.get(b"scunpacked:ship:ship-a"));
+        let s = must_opt(s, "expected ship present");
+        assert_eq!(s.name, "Ship A");
     }
 }

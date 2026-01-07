@@ -1,7 +1,7 @@
+use crate::ed25519_compat::Keypair;
 use anyhow::Result;
 use base64::engine::general_purpose;
 use base64::Engine;
-use ed25519_dalek::Keypair;
 use rand::rngs::OsRng;
 use std::fs;
 use std::path::Path;

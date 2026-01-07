@@ -9,9 +9,19 @@ path = "src/lib.rs"
 [dependencies]
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-libp2p = { version = "0.54.1", features = ["tcp", "ping", "identify", "noise", "yamux", "dns"] }
-libp2p-mdns = { version = "0.46", features = ["tokio"] }
-libp2p-tcp = { version = "0.42", features = ["tokio"] }
+# Use a single libp2p crate with the features we need to avoid cross-version incompatibilities
+libp2p = { version = "0.53.2", features = ["tcp", "ping", "quic", "mdns", "kad", "gossipsub", "noise", "yamux"] }
+tracing = "0.1"
+libp2p-gossipsub = "0.46.1"
+libp2p-tcp = { version = "0.41.0", features = ["tokio"] }
+libp2p-mdns = { version = "0.45.1", features = ["tokio"] }
 
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "io-util", "sync"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "io-util", "sync", "net"] }
+# note: 'futures' still used by tests
 futures = "0.3"
+
+[features]
+mdns_test = []
+
+[dev-dependencies]
+verseguy_test_utils = { path = "../../crates/shared/test_utils" }

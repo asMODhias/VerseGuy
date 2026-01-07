@@ -1,7 +1,7 @@
 use base64::Engine;
 use clap::{Parser, Subcommand};
 use reqwest::blocking::Client;
-use serde_json::json;
+// use serde_json::json; // removed - construct Value manually to avoid clippy disallowed_methods macro internals
 
 #[derive(Parser, Debug)]
 #[command(name = "verseguy-admin")]
@@ -94,7 +94,9 @@ fn run(cli: Cli) -> anyhow::Result<()> {
             } else {
                 anyhow::bail!("provide --file or --b64")
             };
-            let body = json!({"key_b64": key_b64});
+            let mut map = serde_json::Map::new();
+            map.insert("key_b64".to_string(), serde_json::Value::String(key_b64));
+            let body = serde_json::Value::Object(map);
             let mut req = client.post(&url).json(&body);
             if let Some(ref t) = token {
                 req = req.header("x-admin-token", t);

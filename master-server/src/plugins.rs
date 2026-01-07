@@ -1,7 +1,8 @@
+use crate::ed25519_compat::{Keypair, PublicKey};
 use anyhow::Result;
 use base64::{engine::general_purpose, Engine as _};
 use chrono::Utc;
-use ed25519_dalek::{Keypair, PublicKey, Signature, Signer, Verifier};
+use ed25519_dalek::{Signature, Verifier};
 use serde::{Deserialize, Serialize};
 use verseguy_storage::RocksDBStorage;
 
@@ -39,7 +40,7 @@ pub fn store_manifest(
 
     if let Some(kp) = keypair {
         let bytes = canonical_manifest_bytes(manifest)?;
-        let sig: Signature = kp.sign(&bytes);
+        let sig = kp.sign(&bytes)?;
         let sig_b64 = general_purpose::STANDARD.encode(sig.to_bytes());
         let sig_key = format!("plugin_sig:{}:{}", manifest.id, manifest.version);
         storage.put(sig_key.as_bytes(), &sig_b64)?;
@@ -70,13 +71,16 @@ pub fn verify_manifest(
     let sig_b64: Option<String> = storage.get(sig_key.as_bytes())?;
     let sig_b64 = sig_b64.ok_or_else(|| anyhow::anyhow!("signature not found"))?;
     let sig_bytes = general_purpose::STANDARD.decode(sig_b64)?;
-    let sig = Signature::from_bytes(&sig_bytes)?;
+    let mut sig_arr = [0u8; 64];
+    sig_arr.copy_from_slice(&sig_bytes[..64]);
+    let sig = Signature::from_bytes(&sig_arr);
     match pubkey.verify(&bytes, &sig) {
         Ok(_) => Ok(true),
         Err(_) => Ok(false),
     }
 }
 
+#[allow(clippy::disallowed_methods)]
 pub fn revoke_manifest(
     storage: &RocksDBStorage,
     id: &str,

@@ -1,0 +1,37 @@
+name: Security Checks
+
+on:
+  push:
+    branches: [ main, 'feat/**', 'fix/**' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@v1
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+      - name: Run cargo audit
+        run: cargo audit --deny RUSTSEC-ADVISORY
+
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cargo-deny
+        run: cargo install cargo-deny
+      - name: Run cargo-deny checks
+        run: cargo deny check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@v1
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings -D clippy::unwrap_used

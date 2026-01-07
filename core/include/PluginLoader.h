@@ -1,7 +1,18 @@
 #pragma once
 #include <string>
 
-class PluginLoader {
+// Export macro for Windows DLL
+#if defined(_WIN32) || defined(_WIN64)
+  #ifdef VERSEGUY_CORE_EXPORTS
+    #define VY_API __declspec(dllexport)
+  #else
+    #define VY_API __declspec(dllimport)
+  #endif
+#else
+  #define VY_API
+#endif
+
+class VY_API PluginLoader {
 public:
     // Verify a manifest using the manifest-tool (Rust)
     // Returns true if verification succeeds

@@ -25,8 +25,10 @@ let p = PluginInfo { id: "example".into(), name: "Example".into(), version: "0.1
 reg.register(p.clone());
 let all = reg.list();
 assert!(all.iter().any(|x| x.id == "example"));
-let found = reg.find("example").expect("should be present");
-assert_eq!(found.version, "0.1");
+match reg.find("example") {
+    Some(found) => assert_eq!(found.version, "0.1"),
+    None => panic!("should be present"),
+}
 ```
 
 - `register` fügt ein Plugin hinzu oder ersetzt ein vorhandenes mit derselben `id`.

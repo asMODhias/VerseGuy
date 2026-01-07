@@ -1,0 +1,37 @@
+[package]
+name = "telemetry-e2e"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Async / testing
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+# OpenTelemetry
+opentelemetry = "0.22"
+opentelemetry-otlp = { version = "0.15", features = ["grpc-tonic", "http-proto", "reqwest"] }
+opentelemetry-http = { version = "0.11", features = ["reqwest"] }
+opentelemetry_sdk = { version = "0.22", features = ["rt-tokio"] }
+
+# HTTP client for querying Jaeger
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+serde_json = "1.0"
+axum = { version = "0.6", features = ["macros"] }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+hex = "0.4"
+
+
+# Utilities
+uuid = { version = "1.6", features = ["v4"] }
+anyhow = "1.0"
+
+[dev-dependencies]
+# Ensure we have tokio in dev as well
+tracing = "0.1"
+
+[package.metadata]
+# Marker
+purpose = "End-to-end telemetry integration tests (OTLP -> Collector -> Jaeger)"

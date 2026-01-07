@@ -13,3 +13,4 @@ verseguy_auth = { path = "../auth" }
 
 [dev-dependencies]
 tempfile = "3.5"
+verseguy_test_utils = { path = "../../crates/shared/test_utils" }

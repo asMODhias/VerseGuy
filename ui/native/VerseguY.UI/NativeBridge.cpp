@@ -64,6 +64,12 @@ void OnWebMessageReceived(_In_ ICoreWebView2* sender, _In_ ICoreWebView2WebMessa
         } else if (type == "secureStorage.remove") {
             RemoveProtectedBlobForKey(key);
             res["ok"] = true;
+        } else if (type == "ui.openTab") {
+            // Minimal dispatcher: accept `{ id: "organization" }` and acknowledge. Actual UI code in WebView will handle activation.
+            std::string tabId = req.value("tab", std::string());
+            // In a full implementation we would bring native window to front or adjust routing; here we simply acknowledge.
+            res["ok"] = true;
+            res["tab"] = tabId;
         }
     } catch (const std::exception& e) {
         res["ok"] = false;

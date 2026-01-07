@@ -5,6 +5,7 @@ use axum::{
 use std::sync::Arc;
 
 pub mod legal;
+pub mod observability;
 pub mod plugins;
 pub mod routes;
 pub mod state;
@@ -14,6 +15,8 @@ pub mod admin_cli;
 pub mod keystore;
 pub mod manifest_tool;
 
+pub mod ed25519_compat;
+
 pub fn build_app(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/auth/register", post(routes::register_handler))
@@ -21,6 +24,11 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .route("/license/validate", post(routes::license_validate_handler))
         .route("/plugins/search", get(routes::plugins_search_handler))
         .route("/plugins/publish", post(routes::plugins_publish_handler))
+        .route(
+            "/v1/orgs",
+            get(routes::orgs_list_handler).post(routes::orgs_create_handler),
+        )
+        .route("/v1/orgs/{id}", get(routes::orgs_get_handler))
         .route("/admin/keys", get(routes::admin_get_keys))
         .route("/admin/keys/rotate", post(routes::admin_rotate_key))
         .route("/admin/keys/import", post(routes::admin_import_key))
@@ -29,6 +37,9 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .route("/verify/plugin", post(routes::verify_plugin_handler))
         .route("/verify/revoke", post(routes::revoke_handler))
         .route("/verify/revocations", get(routes::revocations_list_handler))
+        // Observability
+        .route("/healthz", get(routes::health_handler))
+        .route("/metrics", get(routes::metrics_handler))
         // Legal / admin legal endpoints
         .route("/admin/legal", post(legal::admin_create_legal_handler))
         .route("/admin/legal/{id}", get(legal::admin_get_legal_handler))

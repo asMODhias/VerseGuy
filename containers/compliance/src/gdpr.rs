@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde::Serialize;
-use verseguy_auth::{session::SessionRecord, User};
+use verseguy_auth::{Session, User};
 use verseguy_storage::RocksDBStorage;
 
 #[derive(Serialize)]
@@ -8,7 +8,7 @@ pub struct UserExport {
     pub id: String,
     pub username: String,
     pub user: User,
-    pub sessions: Vec<SessionRecord>,
+    pub sessions: Vec<Session>,
 }
 
 pub fn export_user_data(storage: &RocksDBStorage, user_id: &str) -> Result<String> {
@@ -18,8 +18,8 @@ pub fn export_user_data(storage: &RocksDBStorage, user_id: &str) -> Result<Strin
     let user = user_opt.ok_or_else(|| anyhow::anyhow!("user not found"))?;
 
     // Find sessions for this user
-    let sessions: Vec<SessionRecord> = storage.prefix_scan(b"session:")?;
-    let user_sessions: Vec<SessionRecord> = sessions
+    let sessions: Vec<Session> = storage.prefix_scan(b"session:")?;
+    let user_sessions: Vec<Session> = sessions
         .into_iter()
         .filter(|s| s.user_id == user_id)
         .collect();
@@ -48,9 +48,9 @@ pub fn delete_user_data(storage: &RocksDBStorage, user_id: &str) -> Result<bool>
     storage.delete(format!("user:username:{}", user.username).as_bytes())?;
 
     // Delete sessions
-    let sessions: Vec<SessionRecord> = storage.prefix_scan(b"session:")?;
+    let sessions: Vec<Session> = storage.prefix_scan(b"session:")?;
     for s in sessions.into_iter().filter(|s| s.user_id == user_id) {
-        storage.delete(format!("session:{}", s.sid).as_bytes())?;
+        storage.delete(format!("session:{}", s.id).as_bytes())?;
     }
 
     Ok(true)

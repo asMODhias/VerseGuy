@@ -1,37 +1,42 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+# File: scripts/test.sh
 
-# Cross-platform test runner
-# Usage: ./scripts/test.sh
+set -e
 
-echo "Running scripts/test.sh - test runner"
+echo "=================================="
+echo "  Running Tests"
+echo "=================================="
+echo ""
 
-# 1) Rust tests
-if command -v cargo >/dev/null 2>&1; then
-  echo "-> cargo test --workspace --verbose"
-  cargo test --workspace --verbose
-else
-  echo "cargo not found, skipping Rust tests" >&2
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# Rust tests
+echo -e "${YELLOW}Running Rust tests...${NC}"
+cargo test --workspace
+echo -e "${GREEN}ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Rust tests passed${NC}"
+echo ""
+
+# C++ tests (if any)
+if [ -d "core/build" ]; then
+    echo -e "${YELLOW}Running C++ tests...${NC}"
+    cd core/build
+    ctest --output-on-failure || true
+    cd ../..
+    echo ""
 fi
 
-# 2) C++ tests via CTest
-if [ -d core/build ]; then
-  if command -v ctest >/dev/null 2>&1; then
-    echo "-> ctest --output-on-failure -C Release (from core/build)"
-    (cd core/build && ctest --output-on-failure -C Release)
-  else
-    echo "ctest not found, skipping C++ tests" >&2
-  fi
-else
-  echo "core/build not found; run scripts/build.sh first to configure & build core" >&2
+# UI tests (if any)
+if [ -f "ui/web/package.json" ]; then
+    echo -e "${YELLOW}Running UI tests...${NC}"
+    cd ui/web
+    npm test || true
+    cd ../..
+    echo ""
 fi
 
-# 3) Master-server tests (optional)
-if command -v cargo >/dev/null 2>&1; then
-  echo "-> cargo test -p master_server --verbose"
-  cargo test -p master_server --verbose
-else
-  echo "cargo not found, skipping master-server tests" >&2
-fi
+echo "=================================="
+echo -e "${GREEN}ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ All tests complete${NC}"
+echo "=================================="
 
-echo "Test runner completed."

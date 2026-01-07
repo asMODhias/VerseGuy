@@ -1,25 +1,50 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import MemberList from '../components/MemberList'
 import RankManagement from '../components/RankManagement'
+import OrganizationList from '../components/OrganizationList'
+import LicenseGuard from '../components/LicenseGuard'
+import { listOrgs } from '../api/organizations'
 
 export default function OrganizationTab() {
   const { license } = useAuth()
+  const [orgs, setOrgs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | undefined>()
 
-  // Data will be loaded from container/plugin in future; UI shows placeholders now
-  const sampleMembers = []
-  const sampleRanks = []
+  const reload = async () => {
+    setError(undefined)
+    try {
+      setLoading(true)
+      const results = await listOrgs()
+      setOrgs(results)
+    } catch (e: any) {
+      setError(e.message || String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    reload()
+  }, [])
 
   return (
     <div className="tab-container">
       <h1 className="text-3xl font-bold mb-6">Organization</h1>
 
-      <section aria-label="members-section">
-        <MemberList members={sampleMembers} />
+      <section aria-label="organizations-section">
+        <OrganizationList orgs={orgs} onCreated={() => reload()} />
+        {loading ? <p style={{ color: 'var(--muted)' }}>Loading organizations…</p> : null}
+        {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
+      </section>
+
+      <section aria-label="members-section" style={{ marginTop: 24 }}>
+        <MemberList members={[]} />
       </section>
 
       <section aria-label="ranks-section" style={{ marginTop: 24 }}>
-        <RankManagement ranks={sampleRanks} />
+        <RankManagement ranks={[]} />
       </section>
 
       {/* Pro features guarded by LicenseGuard */}

@@ -1070,9 +1070,9 @@ pub struct OrganizationPlugin {
 impl OrganizationPlugin {
     pub fn new() -> Self {
         Self {
-            id: CString::new("org.verseguy.organization").unwrap(),
-            name: CString::new("Organization Management").unwrap(),
-            version: CString::new("2.0.0").unwrap(),
+            id: CString::new("org.verseguy.organization").unwrap_or_else(|e| panic!("Invalid CString: {}", e)),
+            name: CString::new("Organization Management").unwrap_or_else(|e| panic!("Invalid CString: {}", e)),
+            version: CString::new("2.0.0").unwrap_or_else(|e| panic!("Invalid CString: {}", e)),
             host: std::ptr::null_mut(),
         }
     }

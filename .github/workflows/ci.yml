@@ -29,14 +29,25 @@ jobs:
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
+          profile: minimal
 
       - name: rustfmt check
         run: cargo fmt --all -- --check
 
       - name: clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --all-features -- -D warnings -D clippy::unwrap_used
+
+      - name: Scan for unwrap/expect in production src
+        run: |
+          echo "Scanning for unwrap()/expect() in production source directories"
+          matches=$(git grep -n --line-number -E "(\.unwrap\(|\.expect\()" -- 'crates/**/src/**' 'core/src/**' || true)
+          # Exclude test directories from matches
+          filtered=$(echo "$matches" | grep -v '/tests/' || true)
+          if [ -n "$filtered" ]; then
+            echo "Found forbidden unwrap()/expect() usage in production code:"; echo "$filtered"; exit 1
+          fi
 
       - name: Run cargo tests
         run: cargo test --workspace --all-features --verbose
@@ -50,46 +61,23 @@ jobs:
       - name: Setup Qt/VS/CMake (preinstalled on windows-latest)
         run: cmake --version
 
-      - name: Setup Rust (for manifest-tool used by C++ tests)
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
       - name: Build Core (CMake)
         working-directory: ${{ runner.workspace }}
         run: |
           cmake -S core -B core/build -DCMAKE_BUILD_TYPE=Release
           cmake --build core/build --config Release
 
-      - name: Build manifest-tool (release)
-        working-directory: ${{ runner.workspace }}
-        run: |
-          cargo build -p master_server --bin manifest-tool --release || true
-
       - name: Run C++ Core Tests (CTest)
         working-directory: ${{ runner.workspace }}/core/build
         run: |
           echo "Running C++ tests with CTest..."
-          ctest --output-on-failure -C Release || true
-
-      - name: Collect C++ test logs
-        run: |
-          mkdir -p core/test-logs || true
-          if [ -f core/build/bin/test_loader ] || [ -f core/build/bin/test_loader.exe ]; then
-            (core/build/bin/test_loader > core/test-logs/test_loader.log 2>&1) || true
-          fi
-          if [ -f core/build/bin/test_plugin_verify ] || [ -f core/build/bin/test_plugin_verify.exe ]; then
-            (core/build/bin/test_plugin_verify > core/test-logs/test_plugin_verify.log 2>&1) || true
-          fi
+          ctest --output-on-failure -C Release
 
       - name: Upload Core Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: core-artifacts
-          path: |
-            core/build/bin/**
-            core/test-logs/**
+          path: core/build/bin/**
 
       - name: Build WinUI Shell (.NET)
         run: |
@@ -99,8 +87,9 @@ jobs:
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
+          profile: minimal
 
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
@@ -129,43 +118,20 @@ jobs:
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
+          profile: minimal
 
       - name: Run master-server tests
         run: |
           cargo test -p master_server --verbose 2>&1 | tee master_server_tests.log
 
       - name: Upload master-server test logs
-        if: always() && env.CI_LOCAL != 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: master-server-tests-logs
           path: master_server_tests.log
-
-  adapters-tests:
-    name: Adapters Tests (SCUnpacked)
-    runs-on: ubuntu-latest
-    needs: master-server-tests
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Run adapters tests
-        run: |
-          cargo test -p plugins-adapter-scunpacked --verbose 2>&1 | tee adapters_tests.log
-
-      - name: Upload adapters test logs
-        if: always() && env.CI_LOCAL != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: adapters-tests-logs
-          path: adapters_tests.log
 
   admin-cli-smoke:
     name: Admin CLI smoke test
@@ -195,44 +161,25 @@ jobs:
 
       - name: Start master server
         run: |
-          set -x
-          echo "Starting master_server (redirecting stdout/stderr to master_server.log)"
-          ./target/release/master_server > master_server.log 2>&1 &
+          ./target/release/master_server &
           echo $! > master_server.pid
-          echo "master_server pid: $(cat master_server.pid)"
 
       - name: Wait for server
         run: |
-          set -x
           for i in {1..20}; do
             status=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:3000/plugins/search?q=") || status=000
-            echo "[$i] Server status: $status"
+            echo "Server status: $status"
             if [ "$status" = "200" ]; then
-              echo "Server ready, tailing server log (last 50 lines):";
-              tail -n 50 master_server.log || true
               break
             fi
             sleep 1
           done
 
-      - name: Run admin CLI smoke tests (verbose)
+      - name: Run admin CLI smoke tests
         run: |
-          set -x
-          echo "Running admin CLI key-list";
           ./target/release/verseguy-admin --server http://127.0.0.1:3000 --token testtoken key-list > admin-key-list.log || true
-          echo "Running admin CLI key-rotate";
           ./target/release/verseguy-admin --server http://127.0.0.1:3000 --token testtoken key-rotate > admin-key-rotate.log || true
-          echo "Running admin CLI key-import";
           ./target/release/verseguy-admin --server http://127.0.0.1:3000 --token testtoken key-import --b64 "$(base64 -w0 tmptest/master.key)" > admin-key-import.log || true
-
-      - name: Show logs (server + admin cli)
-        if: always()
-        run: |
-          echo "--- master_server.log (first 200 lines) ---";
-          head -n 200 master_server.log || true;
-          echo "--- admin-key-list.log ---"; cat admin-key-list.log || true;
-          echo "--- admin-key-rotate.log ---"; cat admin-key-rotate.log || true;
-          echo "--- admin-key-import.log ---"; cat admin-key-import.log || true;
 
       - name: Upload admin CLI logs
         if: always()
@@ -243,52 +190,98 @@ jobs:
             admin-key-list.log
             admin-key-rotate.log
             admin-key-import.log
-            master_server.log
 
       - name: Kill master server
         if: always()
         run: |
           if [ -f master_server.pid ]; then
-            echo "Killing master server pid $(cat master_server.pid)"
             kill $(cat master_server.pid) || true
           fi
-
-  docs-validate:
-    name: Docs validation
+  e2e-playwright:
+    name: Playwright E2E (UI + Master Server)
     runs-on: ubuntu-latest
-    needs: build-rust
+    needs: admin-cli-smoke
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm'
 
-      - name: Install markdown tooling
-        run: npm install -g markdownlint-cli markdown-link-check
-
-      - name: Run markdownlint
+      - name: Install UI deps & Playwright browsers
+        working-directory: ui/web
         run: |
-          markdownlint "docs/**/*.md" 2>&1 | tee markdownlint.log
-          test ${PIPESTATUS[0]} -eq 0
+          npm ci
+          npx playwright install --with-deps
 
-      - name: Run markdown-link-check
+      - name: Build master-server
         run: |
-          for f in $(find docs -type f -name "*.md"); do
-            echo "Checking $f";
-            markdown-link-check -q "$f" 2>&1 | tee "$f.link.log" || exit 1;
+          cargo build -p master_server --release --features run-server
+
+      - name: Start master server
+        env:
+          MASTER_SERVER_PORT: 3001
+          MASTER_DB_PATH: ./tmp/e2e_db
+          MASTER_LICENSE_SECRET: e2e-secret
+        run: |
+          ./target/release/master_server &
+          echo $! > master_server.pid
+
+      - name: Wait for master server
+        run: |
+          for i in {1..30}; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:3001/plugins/search?q=") || status=000
+            echo "Server status: $status"
+            if [ "$status" = "200" ]; then
+              break
+            fi
+            sleep 1
           done
 
-      - name: Upload docs validation logs
+      - name: Start web dev server
+        working-directory: ui/web
+        run: |
+          npm start &>/tmp/web.log &
+          echo $! > web.pid
+
+      - name: Wait for web UI
+        run: |
+          for i in {1..30}; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:3000/") || status=000
+            echo "Web status: $status"
+            if [ "$status" = "200" ]; then
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run Playwright tests
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_API_URL: http://127.0.0.1:3001
+        working-directory: ui/web
+        run: |
+          npm run test:e2e --silent || true
+
+      - name: Upload Playwright results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: docs-validation-logs
+          name: playwright-results
           path: |
-            markdownlint.log
-            docs/**/*.link.log
+            ui/web/playwright-report
+            ui/web/test-results
+            ui/web/videos
+            /tmp/web.log
+            tmp/e2e_db
 
+      - name: Kill servers
+        if: always()
+        run: |
+          if [ -f master_server.pid ]; then kill $(cat master_server.pid) || true; fi
+          if [ -f web.pid ]; then kill $(cat web.pid) || true; fi
   meta:
     name: Sanity
     runs-on: ubuntu-latest

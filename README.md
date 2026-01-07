@@ -1,3 +1,84 @@
+# Verse Guy v2.0
+
+[![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml) [![Build Windows](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
+
+**Star Citizen Organization & Fleet Management**
+
+> Note: Replace `OWNER/REPO` with your GitHub organization and repository name to enable badges.
+
+## Quickstart (Dev)
+
+1. Prerequisites
+   - Rust toolchain (stable), cargo
+   - CMake and Visual Studio (for Windows native builds)
+   - Node 18+ (for web UI dev)
+
+2. Clone & build
+
+```bash
+git clone https://github.com/OWNER/REPO.git
+cd REPO
+# Build everything (Linux/macOS)
+./scripts/build.sh
+# On Windows use the PowerShell wrapper
+./scripts/build.ps1
+```
+
+3. Running tests
+
+```bash
+# All workspace tests
+cargo test --workspace
+# Run a single crate tests (example)
+cargo test -p sample_crate
+```
+
+4. Development helpers
+
+- Format: `cargo fmt --all`
+- Lints: `cargo clippy --all-targets --all-features`
+- Run a single integration test locally: `cargo test --test gossipsub_integration -p verseguy_p2p -- --nocapture`
+
+5. Update CI badge
+
+Replace the `OWNER/REPO` placeholders in the badge links at the top of this README with your repository path to enable status badges.
+
+## Status
+
+🚧 **In Active Development** 🚧
+
+Current Phase: Core Implementation (Week 1-2)
+
+## Architecture
+
+- **Core:** C++ DLL (minimal bootstrap)
+- **Containers:** Rust DLLs (infrastructure)
+- **Plugins:** Rust DLLs (features)
+- **UI:** WinUI 3 + React
+
+## Build
+
+```bash
+# Build everything
+./scripts/build.sh
+
+# Run tests
+./scripts/test.sh
+
+# Development mode
+./scripts/dev.sh
+```
+
+## Documentation
+
+See `docs/` directory for complete documentation.
+
+## License
+
+MIT License - See LICENSE file
+
+---
+
 # VerseguY — Master Server & Tools
 
 Kurzbeschreibung: Dieses Repository enthält die Master-Server-Implementation, Auth/Storage-Container, C++ Core, UI-Shell und Dev/CI-Skripte für das VerseguY Projekt.

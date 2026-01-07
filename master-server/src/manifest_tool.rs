@@ -1,6 +1,7 @@
+use crate::ed25519_compat::{Keypair, PublicKey};
 use anyhow::Result;
 use base64::{engine::general_purpose, Engine as _};
-use ed25519_dalek::{Keypair, PublicKey, Signature, Signer, Verifier};
+use ed25519_dalek::{Signature, Verifier};
 use rand::rngs::OsRng;
 use std::fs;
 
@@ -16,7 +17,7 @@ pub fn sign_manifest(manifest: &str, out_sig: &str, out_key: &str, out_pub: &str
     let bytes = canonical_bytes_from_path(manifest)?;
     let mut csprng = OsRng {};
     let kp: Keypair = Keypair::generate(&mut csprng);
-    let sig: Signature = kp.sign(&bytes);
+    let sig = kp.sign(&bytes)?;
     fs::write(out_sig, general_purpose::STANDARD.encode(sig.to_bytes()))?;
     fs::write(out_key, kp.to_bytes())?;
     fs::write(
@@ -38,10 +39,14 @@ pub fn verify_manifest(manifest: &str, sigfile: &str, pubfile: &str) -> Result<b
     let bytes = canonical_bytes_from_path(manifest)?;
     let sig_b64 = fs::read_to_string(sigfile)?;
     let sig_bytes = general_purpose::STANDARD.decode(sig_b64.trim())?;
-    let sig = Signature::from_bytes(&sig_bytes)?;
+    let mut sig_arr = [0u8; 64];
+    sig_arr.copy_from_slice(&sig_bytes[..64]);
+    let sig = Signature::from_bytes(&sig_arr);
     let pub_b64 = fs::read_to_string(pubfile)?;
     let pub_bytes = general_purpose::STANDARD.decode(pub_b64.trim())?;
-    let pubk = PublicKey::from_bytes(&pub_bytes)?;
+    let mut pub_arr = [0u8; 32];
+    pub_arr.copy_from_slice(&pub_bytes[..32]);
+    let pubk = PublicKey::from_bytes(&pub_arr)?;
     match pubk.verify(&bytes, &sig) {
         Ok(_) => {
             println!("manifest-tool: verification OK");

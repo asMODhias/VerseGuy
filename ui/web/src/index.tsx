@@ -1,12 +1,15 @@
-import React from 'react'
-import { createRoot } from 'react-dom/client'
-import App from './App'
-import './index.css'
+import React from 'react';
+import { createRoot } from 'react-dom/client';
 
-const rootEl = document.getElementById('root') ?? document.createElement('div')
-if (!rootEl.id) {
-  rootEl.id = 'root'
-  document.body.appendChild(rootEl)
-}
+import OrganizationTab from './tabs/OrganizationTab'
 
-createRoot(rootEl).render(<App />)
+const App = () => (
+  <div>
+    <OrganizationTab />
+  </div>
+)
+
+const root = document.createElement('div');
+root.id = 'root';
+document.body.appendChild(root);
+createRoot(root).render(<App />);

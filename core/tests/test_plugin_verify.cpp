@@ -17,7 +17,8 @@ int main() {
     std::ofstream(manifest) << R"({"id":"org.test.plugin","name":"Test Plugin","version":"1.0.0"})";
 
     // Sign manifest using manifest-tool (via cargo run)
-    std::string cmd = "cargo run -p master_server --bin manifest-tool -- sign \"" + manifest.string() + "\" \"" + sig.string() + "\" \"" + (dir / "kp.bin").string() + "\" \"" + key.string() + "\"";
+    // Use --manifest-path to ensure cargo finds the workspace when running from the build directory
+    std::string cmd = "cargo run --manifest-path ../../Cargo.toml -p master_server --bin manifest-tool -- sign \"" + manifest.string() + "\" \"" + sig.string() + "\" \"" + (dir / "kp.bin").string() + "\" \"" + key.string() + "\"";
     std::cout << "Running: " << cmd << std::endl;
     int rc = std::system(cmd.c_str());
     if (rc != 0) {

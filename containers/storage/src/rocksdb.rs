@@ -1,79 +1,125 @@
-use anyhow::Result;
-use rocksdb::{DB, IteratorMode, Options};
-use serde::{Serialize, de::DeserializeOwned};
+use anyhow::{Context, Result};
+use rocksdb::{DB, Options, IteratorMode};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
+use tracing::{debug, info};
 
+/// RocksDB storage wrapper
 #[derive(Clone)]
 pub struct RocksDBStorage {
     db: Arc<DB>,
 }
 
 impl RocksDBStorage {
+    /// Open database at path
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
+        info!("Opening database at: {:?}", path.as_ref());
+
         let mut opts = Options::default();
         opts.create_if_missing(true);
-        let db = DB::open(&opts, path)?;
+        opts.create_missing_column_families(true);
+
+        let db = DB::open(&opts, path.as_ref())
+            .context("Failed to open RocksDB database")?;
+
+        info!("Database opened successfully");
+
         Ok(Self { db: Arc::new(db) })
     }
 
+    /// Put value with key
     pub fn put<K, V>(&self, key: K, value: &V) -> Result<()>
     where
         K: AsRef<[u8]>,
         V: Serialize,
     {
-        let bytes = serde_json::to_vec(value)?;
-        self.db.put(key, bytes)?;
+        let key_ref = key.as_ref();
+        debug!("PUT key: {:?}", std::str::from_utf8(key_ref).unwrap_or("<binary>"));
+
+        let value_bytes = serde_json::to_vec(value).context("Failed to serialize value")?;
+
+        self.db
+            .put(key_ref, value_bytes)
+            .context("Failed to write to database")?;
+
         Ok(())
     }
 
+    /// Get value by key
     pub fn get<K, V>(&self, key: K) -> Result<Option<V>>
     where
         K: AsRef<[u8]>,
-        V: for<'de> DeserializeOwned,
+        V: for<'de> Deserialize<'de>,
     {
-        match self.db.get(key)? {
-            Some(bytes) => Ok(Some(serde_json::from_slice(&bytes)?)),
-            None => Ok(None),
-        }
-    }
+        let key_ref = key.as_ref();
+        debug!("GET key: {:?}", std::str::from_utf8(key_ref).unwrap_or("<binary>"));
 
-    pub fn prefix_scan<V>(&self, prefix: &[u8]) -> Result<Vec<V>>
-    where
-        V: for<'de> DeserializeOwned,
-    {
-        let mut results = Vec::new();
-        let iter = self.db.iterator(IteratorMode::Start);
-        for item in iter {
-            let (k, v) = item?;
-            if k.starts_with(prefix) {
-                let item_val: V = serde_json::from_slice(&v)?;
-                results.push(item_val);
+        let value_bytes = self
+            .db
+            .get(key_ref)
+            .context("Failed to read from database")?;
+
+        match value_bytes {
+            Some(bytes) => {
+                let value = serde_json::from_slice(&bytes).context("Failed to deserialize value")?;
+                Ok(Some(value))
+            }
+            None => {
+                debug!("Key not found");
+                Ok(None)
             }
         }
-        Ok(results)
     }
 
-    /// Delete a single key
+    /// Delete value by key
     pub fn delete<K>(&self, key: K) -> Result<()>
     where
         K: AsRef<[u8]>,
     {
-        self.db.delete(key)?;
+        let key_ref = key.as_ref();
+        debug!("DELETE key: {:?}", std::str::from_utf8(key_ref).unwrap_or("<binary>"));
+
+        self.db
+            .delete(key_ref)
+            .context("Failed to delete from database")?;
+
         Ok(())
     }
 
-    /// Delete all entries whose key starts with the provided prefix
-    pub fn prefix_delete(&self, prefix: &[u8]) -> Result<usize> {
-        let mut removed = 0usize;
-        let iter = self.db.iterator(IteratorMode::Start);
+    /// Scan with prefix, returning deserialized values
+    pub fn prefix_scan<K, V>(&self, prefix: K) -> Result<Vec<V>>
+    where
+        K: AsRef<[u8]>,
+        V: for<'de> Deserialize<'de>,
+    {
+        let prefix_bytes = prefix.as_ref();
+        debug!("PREFIX_SCAN: {:?}", std::str::from_utf8(prefix_bytes).unwrap_or("<binary>"));
+
+        let iter = self
+            .db
+            .iterator(IteratorMode::From(prefix_bytes, rocksdb::Direction::Forward));
+
+        let mut results = Vec::new();
         for item in iter {
-            let (k, _) = item?;
-            if k.starts_with(prefix) {
-                self.db.delete(&k)?;
-                removed += 1;
+            let (key, value) = item.context("Iterator error")?;
+
+            if !key.starts_with(prefix_bytes) {
+                break;
             }
+
+            let v = serde_json::from_slice(&value).context("Failed to deserialize scanned value")?;
+            results.push(v);
         }
-        Ok(removed)
+
+        debug!("Found {} items with prefix", results.len());
+        Ok(results)
+    }
+
+    /// Get database path when available
+    pub fn path(&self) -> Option<&Path> {
+        // rocksdb::DB has path() method returning &Path
+        Some(self.db.path())
     }
 }
+

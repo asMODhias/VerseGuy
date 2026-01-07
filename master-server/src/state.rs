@@ -1,4 +1,4 @@
-use ed25519_dalek::Keypair;
+use crate::ed25519_compat::Keypair;
 use std::sync::Arc;
 use verseguy_storage::RocksDBStorage;
 
@@ -6,6 +6,8 @@ pub struct AppState {
     pub storage: Arc<RocksDBStorage>,
     pub license_secret: Vec<u8>,
     pub keypair: Option<Keypair>,
+    /// Optional Prometheus metrics handle used by the /metrics endpoint
+    pub metrics_handle: Option<metrics_exporter_prometheus::PrometheusHandle>,
 }
 
 impl AppState {
@@ -29,6 +31,7 @@ impl AppState {
             storage: Arc::new(storage),
             license_secret,
             keypair,
+            metrics_handle: None,
         })
     }
 }

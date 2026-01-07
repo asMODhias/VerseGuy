@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
-use tempfile::tempdir;
+use tempfile::TempDir;
 use verseguy_storage::RocksDBStorage;
+use verseguy_test_utils::{must, must_opt};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 struct TestItem {
@@ -9,20 +10,62 @@ struct TestItem {
 }
 
 #[test]
-fn put_get_and_prefix_scan() {
-    let dir = tempdir().unwrap();
-    let db = RocksDBStorage::open(dir.path()).unwrap();
+fn test_open_database() {
+    let temp_dir = must(TempDir::new());
+    let storage = must(RocksDBStorage::open(temp_dir.path()));
+    assert!(storage.path().is_some());
+}
+
+#[test]
+fn test_put_and_get() {
+    let temp_dir = must(TempDir::new());
+    let db = must(RocksDBStorage::open(temp_dir.path()));
 
     let item = TestItem {
         id: "1".to_string(),
         name: "Alice".to_string(),
     };
-    db.put(b"user:1", &item).unwrap();
+    must(db.put(b"user:1", &item));
 
-    let got: Option<TestItem> = db.get(b"user:1").unwrap();
-    assert_eq!(got.unwrap(), item);
+    let got: Option<TestItem> = must(db.get(b"user:1"));
+    let got = must_opt(got, "missing item");
+    assert_eq!(got, item);
+}
 
-    let items: Vec<TestItem> = db.prefix_scan(b"user:").unwrap();
-    assert_eq!(items.len(), 1);
-    assert_eq!(items[0].id, "1");
+#[test]
+fn test_get_nonexistent() {
+    let temp_dir = must(TempDir::new());
+    let db = must(RocksDBStorage::open(temp_dir.path()));
+
+    let got: Option<TestItem> = must(db.get(b"nonexistent"));
+    assert!(got.is_none());
+}
+
+#[test]
+fn test_delete_and_prefix() {
+    let temp_dir = must(TempDir::new());
+    let db = must(RocksDBStorage::open(temp_dir.path()));
+
+    let a = TestItem {
+        id: "1".into(),
+        name: "A".into(),
+    };
+    let b = TestItem {
+        id: "2".into(),
+        name: "B".into(),
+    };
+    let c = TestItem {
+        id: "3".into(),
+        name: "C".into(),
+    };
+
+    must(db.put(b"user:1", &a));
+    must(db.put(b"user:2", &b));
+    must(db.put(b"user:3", &c));
+    must(db.put(b"post:1", &"Post 1"));
+
+    must(db.delete(b"user:2"));
+
+    let users: Vec<TestItem> = must(db.prefix_scan(b"user:"));
+    assert_eq!(users.len(), 2);
 }

@@ -1,0 +1,21 @@
+[package]
+name = "verseguy_migrations"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+clap = { version = "4", features = ["derive"] }
+
+# Depend on storage crate
+verseguy_storage = { path = "../../containers/storage" }
+
+[lib]
+name = "verseguy_migrations"
+path = "src/lib.rs"
+
+[dev-dependencies]
+tempfile = "3.8"

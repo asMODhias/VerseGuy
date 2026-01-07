@@ -1,21 +1,45 @@
-# Rust/Cargo
-/target/
-**/target/
-**/*.rs.bk
+# Rust
+target/
+Cargo.lock
 
-# Build artifacts
+# C++
+build/
+*.o
+*.obj
+*.dll
+*.so
+*.dylib
+*.exe
+
+# Node
+node_modules/
+dist/
+.next/
+
+# C#
+bin/
+obj/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+*.db
+data/
+
+# Logs
+*.log
+
+# Project-specific
 core/build/
 core/bin/
-
-# VS/IDE
-.vscode/
-*.suo
-*.user
-*.vcxproj.user
-
-# Logs and temp
-*.log
-tmp/
 
 # Persistent data for adapters
 /data/scunpacked/db/

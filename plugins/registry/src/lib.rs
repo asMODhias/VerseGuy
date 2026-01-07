@@ -23,7 +23,10 @@ impl Registry {
     }
 
     pub fn register(&self, p: PluginInfo) {
-        let mut lock = self.plugins.lock().unwrap();
+        let mut lock = match self.plugins.lock() {
+            Ok(l) => l,
+            Err(e) => panic!("plugins mutex poisoned: {}", e),
+        };
         // replace existing with same id
         if let Some(pos) = lock.iter().position(|x| x.id == p.id) {
             lock[pos] = p;
@@ -33,12 +36,18 @@ impl Registry {
     }
 
     pub fn list(&self) -> Vec<PluginInfo> {
-        let lock = self.plugins.lock().unwrap();
+        let lock = match self.plugins.lock() {
+            Ok(l) => l,
+            Err(e) => panic!("plugins mutex poisoned: {}", e),
+        };
         lock.clone()
     }
 
     pub fn find(&self, id: &str) -> Option<PluginInfo> {
-        let lock = self.plugins.lock().unwrap();
+        let lock = match self.plugins.lock() {
+            Ok(l) => l,
+            Err(e) => panic!("plugins mutex poisoned: {}", e),
+        };
         lock.iter().find(|p| p.id == id).cloned()
     }
 }
@@ -77,7 +86,10 @@ mod tests {
             version: "1.2".into(),
         };
         r.register(a.clone());
-        let found = r.find("x").expect("should find plugin");
+        let found = match r.find("x") {
+            Some(p) => p,
+            None => panic!("should find plugin"),
+        };
         assert_eq!(found, a);
         assert!(r.find("missing").is_none());
     }

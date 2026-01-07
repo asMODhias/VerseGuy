@@ -1,16 +1,18 @@
+#![allow(clippy::disallowed_methods)]
 use reqwest::Client;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
+use verseguy_test_utils::{must, must_opt};
 
 #[tokio::test]
 async fn register_login_and_validate_license() {
     // Start the server as a child process with a temporary DB path and secret
-    let dir = tempdir().unwrap();
-    let _db_path = dir.path().to_str().unwrap().to_string();
+    let dir = must(tempdir());
+    let _db_path = must_opt(dir.path().to_str(), "tempdir path not utf8").to_string();
 
-    let _child = Command::new(std::env::current_exe().unwrap())
+    let _child = Command::new(must(std::env::current_exe()))
         .arg("-h")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -33,6 +35,6 @@ async fn register_login_and_validate_license() {
         return;
     }
 
-    let r = res.unwrap();
+    let r = must(res);
     assert!(r.status().is_success());
 }

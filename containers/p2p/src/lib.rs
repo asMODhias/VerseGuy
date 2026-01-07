@@ -17,15 +17,24 @@ impl Peer {
 
 mod local;
 
+pub mod network;
+
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::disallowed_methods,
+        clippy::collapsible_if,
+        clippy::single_match,
+        clippy::manual_unwrap_or_default,
+        clippy::let_unit_value
+    )]
     use super::*;
     use crate::local;
 
     use libp2p::swarm::Config as SwarmConfig;
     use libp2p::swarm::SwarmEvent;
+    use libp2p::tcp::tokio as tcp_tokio;
     use libp2p::{Swarm, ping};
-    use libp2p_tcp::tokio as tcp_tokio;
     use std::time::Duration;
 
     async fn make_swarm() -> (Swarm<ping::Behaviour>, PeerId) {
@@ -36,11 +45,14 @@ mod tests {
         use libp2p::core::multiaddr::Multiaddr as _Multiaddr;
 
         // Explicit TCP transport (Tokio) with Noise + Yamux
-        let tcp = tcp_tokio::Transport::new(libp2p_tcp::Config::default());
+        let tcp = tcp_tokio::Transport::new(libp2p::tcp::Config::default());
         let transport = tcp
             .upgrade(libp2p::core::upgrade::Version::V1)
             .authenticate(
-                libp2p::noise::Config::new(&identity::Keypair::generate_ed25519()).unwrap(),
+                match libp2p::noise::Config::new(&identity::Keypair::generate_ed25519()) {
+                    Ok(c) => c,
+                    Err(e) => panic!("failed to create noise config: {}", e),
+                },
             )
             .multiplex(libp2p::yamux::Config::default())
             .boxed();
@@ -57,8 +69,10 @@ mod tests {
 
         // listen on tcp on random port and log immediate listeners
         swarm
-            .listen_on("/ip4/127.0.0.1/tcp/0".parse::<_Multiaddr>().unwrap())
-            .unwrap();
+            .listen_on(verseguy_test_utils::must(
+                "/ip4/127.0.0.1/tcp/0".parse::<_Multiaddr>(),
+            ))
+            .unwrap_or_else(|e| panic!("failed to listen on address: {}", e));
         let listeners: Vec<_> = swarm.listeners().collect();
         eprintln!("immediate listeners after listen_on: {:?}", listeners);
 
@@ -92,8 +106,11 @@ mod tests {
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
         })
-        .await
-        .expect("timed out waiting for s1 listen addr");
+        .await;
+        let addr1 = match addr1 {
+            Ok(a) => a,
+            Err(_) => panic!("timed out waiting for s1 listen addr"),
+        };
 
         let addr2 = tokio::time::timeout(Duration::from_secs(6), async {
             loop {
@@ -109,8 +126,11 @@ mod tests {
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
         })
-        .await
-        .expect("timed out waiting for s2 listen addr");
+        .await;
+        let addr2 = match addr2 {
+            Ok(a) => a,
+            Err(_) => panic!("timed out waiting for s2 listen addr"),
+        };
 
         use libp2p::multiaddr::Protocol;
         let mut d1 = addr1.clone();
@@ -213,6 +233,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "mdns_test")]
     #[ignore = "mdns - test discovery locally"]
     #[tokio::test]
     async fn ping_between_two_peers_mdns_discovery() {
@@ -226,22 +247,34 @@ mod tests {
 
         // mdns swarms per peer
         // create mdns behaviours bound to the existing peer ids
-        let mdns1 = mdns_tokio::Behaviour::new(libp2p_mdns::Config::default(), s1_id).unwrap();
-        let mdns2 = mdns_tokio::Behaviour::new(libp2p_mdns::Config::default(), s2_id).unwrap();
+        let mdns1 = match mdns_tokio::Behaviour::new(libp2p_mdns::Config::default(), s1_id) {
+            Ok(b) => b,
+            Err(e) => panic!("failed to create mdns behaviour: {}", e),
+        };
+        let mdns2 = match mdns_tokio::Behaviour::new(libp2p_mdns::Config::default(), s2_id) {
+            Ok(b) => b,
+            Err(e) => panic!("failed to create mdns behaviour: {}", e),
+        };
 
         // create mdns Swarms (explicit transports with tokio)
         use libp2p::Transport as _TransportTrait;
         let transport1 = libp2p_tcp::tokio::Transport::new(libp2p_tcp::Config::default())
             .upgrade(libp2p::core::upgrade::Version::V1)
             .authenticate(
-                libp2p::noise::Config::new(&identity::Keypair::generate_ed25519()).unwrap(),
+                match libp2p::noise::Config::new(&identity::Keypair::generate_ed25519()) {
+                    Ok(c) => c,
+                    Err(e) => panic!("failed to create noise config: {}", e),
+                },
             )
             .multiplex(libp2p::yamux::Config::default())
             .boxed();
         let transport2 = libp2p_tcp::tokio::Transport::new(libp2p_tcp::Config::default())
             .upgrade(libp2p::core::upgrade::Version::V1)
             .authenticate(
-                libp2p::noise::Config::new(&identity::Keypair::generate_ed25519()).unwrap(),
+                match libp2p::noise::Config::new(&identity::Keypair::generate_ed25519()) {
+                    Ok(c) => c,
+                    Err(e) => panic!("failed to create noise config: {}", e),
+                },
             )
             .multiplex(libp2p::yamux::Config::default())
             .boxed();
@@ -264,10 +297,10 @@ mod tests {
         );
 
         mdns_swarm1
-            .listen_on("/ip4/0.0.0.0/udp/0".parse().unwrap())
+            .listen_on(verseguy_test_utils::must("/ip4/0.0.0.0/udp/0".parse()))
             .ok();
         mdns_swarm2
-            .listen_on("/ip4/0.0.0.0/udp/0".parse().unwrap())
+            .listen_on(verseguy_test_utils::must("/ip4/0.0.0.0/udp/0".parse()))
             .ok();
 
         // Log ping listeners (what addresses mdns should discover)
@@ -467,16 +500,26 @@ mod tests {
 
         // overall timeout for the test body
         let overall = tokio::time::timeout(Duration::from_secs(30), test_body).await;
-        // unwrap outer timeout result and the inner test body result (fail with clear message)
-        overall
-            .expect("mdns test timed out")
-            .expect("mdns test body failed");
+        // Check outer timeout and inner test body result for clear failure messages
+        match overall {
+            Ok(inner) => match inner {
+                Ok(_) => {}
+                Err(_) => panic!("mdns test body failed"),
+            },
+            Err(_) => panic!("mdns test timed out"),
+        };
     }
 
     #[tokio::test]
     async fn local_ping_between_two_peers() {
-        let addr = local::start_echo_server().await.expect("start server");
-        let res = local::ping_addr(&addr).await.expect("ping addr");
+        let addr = match local::start_echo_server().await {
+            Ok(a) => a,
+            Err(e) => panic!("start server failed: {}", e),
+        };
+        let res = match local::ping_addr(&addr).await {
+            Ok(r) => r,
+            Err(e) => panic!("ping addr failed: {}", e),
+        };
         assert_eq!(res, "pong");
     }
 }

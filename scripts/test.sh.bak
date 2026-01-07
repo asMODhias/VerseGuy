@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Cross-platform test runner
+# Usage: ./scripts/test.sh
+
+echo "Running scripts/test.sh - test runner"
+
+# 1) Rust tests
+if command -v cargo >/dev/null 2>&1; then
+  echo "-> cargo test --workspace --verbose"
+  cargo test --workspace --verbose
+else
+  echo "cargo not found, skipping Rust tests" >&2
+fi
+
+# 2) C++ tests via CTest
+if [ -d core/build ]; then
+  if command -v ctest >/dev/null 2>&1; then
+    echo "-> ctest --output-on-failure -C Release (from core/build)"
+    (cd core/build && ctest --output-on-failure -C Release)
+  else
+    echo "ctest not found, skipping C++ tests" >&2
+  fi
+else
+  echo "core/build not found; run scripts/build.sh first to configure & build core" >&2
+fi
+
+# 3) Master-server tests (optional)
+if command -v cargo >/dev/null 2>&1; then
+  echo "-> cargo test -p master_server --verbose"
+  cargo test -p master_server --verbose
+else
+  echo "cargo not found, skipping master-server tests" >&2
+fi
+
+echo "Test runner completed."

@@ -8,3 +8,4 @@ docker build -t verseguy/act-runner:node18 -f scripts/dockerfiles/act-runner-nod
 
 echo "Building verseguy/p2p:local (this can be big)
 docker build -t verseguy/p2p:local -f containers/p2p/Dockerfile .
+
