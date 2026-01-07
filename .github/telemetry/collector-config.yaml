@@ -1,19 +1,25 @@
 receivers:
   otlp:
     protocols:
-      grpc: {}
-      http: {}
+      grpc:
+        endpoint: "0.0.0.0:4317"
+      http:
+        endpoint: "0.0.0.0:4318"
 
 exporters:
   zipkin:
     endpoint: "http://jaeger:9411/api/v2/spans"
+  debug: {}
 
 processors:
   batch: {}
 
 service:
+  telemetry:
+    logs:
+      level: debug
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [zipkin]
+      exporters: [zipkin, debug]

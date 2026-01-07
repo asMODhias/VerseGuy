@@ -1,0 +1,118 @@
+[
+  {
+    "timestamp": "2026-01-07T13:38:21.137588500+00:00",
+    "method": "POST",
+    "path": "/v1/traces",
+    "headers": [
+      [
+        "content-type",
+        "application/x-protobuf"
+      ],
+      [
+        "user-agent",
+        "OTel OTLP Exporter Rust/0.15.0"
+      ],
+      [
+        "accept",
+        "*/*"
+      ],
+      [
+        "host",
+        "127.0.0.1:4319"
+      ],
+      [
+        "content-length",
+        "178"
+      ]
+    ],
+    "body_len": 178,
+    "body_head_hex": "0aaf010a210a1f0a0c736572766963652e6e616d65120f0a0d74656c656d657472792d6532651289010a0f0a0d74656c656d657472792d65326512760a1013c8"
+  },
+  {
+    "timestamp": "2026-01-07T13:38:22.361108100+00:00",
+    "method": "POST",
+    "path": "/v1/traces",
+    "headers": [
+      [
+        "content-type",
+        "application/x-protobuf"
+      ],
+      [
+        "user-agent",
+        "OTel OTLP Exporter Rust/0.15.0"
+      ],
+      [
+        "accept",
+        "*/*"
+      ],
+      [
+        "host",
+        "127.0.0.1:4319"
+      ],
+      [
+        "content-length",
+        "356"
+      ]
+    ],
+    "body_len": 356,
+    "body_head_hex": "0aaf010a210a1f0a0c736572766963652e6e616d65120f0a0d74656c656d657472792d6532651289010a0f0a0d74656c656d657472792d65326512760a103a77"
+  },
+  {
+    "timestamp": "2026-01-07T13:38:37.843141800+00:00",
+    "method": "POST",
+    "path": "/v1/traces",
+    "headers": [
+      [
+        "content-type",
+        "application/x-protobuf"
+      ],
+      [
+        "user-agent",
+        "OTel OTLP Exporter Rust/0.15.0"
+      ],
+      [
+        "accept",
+        "*/*"
+      ],
+      [
+        "host",
+        "127.0.0.1:4319"
+      ],
+      [
+        "content-length",
+        "178"
+      ]
+    ],
+    "body_len": 178,
+    "body_head_hex": "0aaf010a210a1f0a0c736572766963652e6e616d65120f0a0d74656c656d657472792d6532651289010a0f0a0d74656c656d657472792d65326512760a102594"
+  },
+  {
+    "timestamp": "2026-01-07T13:38:39.062062700+00:00",
+    "method": "POST",
+    "path": "/v1/traces",
+    "headers": [
+      [
+        "content-type",
+        "application/x-protobuf"
+      ],
+      [
+        "user-agent",
+        "OTel OTLP Exporter Rust/0.15.0"
+      ],
+      [
+        "accept",
+        "*/*"
+      ],
+      [
+        "host",
+        "127.0.0.1:4319"
+      ],
+      [
+        "content-length",
+        "356"
+      ]
+    ],
+    "body_len": 356,
+    "body_head_hex": "0aaf010a210a1f0a0c736572766963652e6e616d65120f0a0d74656c656d657472792d6532651289010a0f0a0d74656c656d657472792d65326512760a10debd"
+  }
+]

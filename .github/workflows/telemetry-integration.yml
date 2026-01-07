@@ -32,20 +32,32 @@ jobs:
             sleep 2
           done
 
-      - name: Wait for OTLP gRPC port (4317)
+      - name: Wait for Collector readiness ("Everything is ready")
         run: |
           for i in {1..60}; do
-            if (echo > /dev/tcp/127.0.0.1/4317) >/dev/null 2>&1; then
-              echo "OTLP gRPC port 4317 is open"; break
+            if docker compose -f .github/telemetry/docker-compose.yml logs otel-collector --no-color --tail 200 | grep -q "Everything is ready"; then
+              echo "Collector is ready"; break
             fi
-            echo "waiting for otlp gRPC port..."
+            echo "waiting for collector readiness..."
+            sleep 2
+          done
+
+      - name: Wait for Jaeger Zipkin listener
+        run: |
+          for i in {1..60}; do
+            if docker compose -f .github/telemetry/docker-compose.yml logs jaeger --no-color --tail 200 | grep -q "Listening for Zipkin HTTP traffic"; then
+              echo "Jaeger Zipkin listener is up"; break
+            fi
+            echo "waiting for jaeger zipkin listener..."
             sleep 2
           done
 
       - name: Run telemetry e2e tests (with retries)
         env:
-          OTLP_ENDPOINT: "http://localhost:4317"
+          OTLP_ENDPOINT: "http://localhost:4318"
+          OTLP_USE_HTTP: '1'
           JAEGER_QUERY_URL: "http://localhost:16686"
+          TELEMETRY_DEBUG: '1'
         run: |
           set -e
           attempts=0
@@ -57,8 +69,12 @@ jobs:
               echo "Telemetry tests passed"
               break
             fi
-            echo "Telemetry tests failed on attempt ${attempts}. Dumping Jaeger traces for diagnostics..."
+            echo "Telemetry tests failed on attempt ${attempts}. Dumping Jaeger traces and Collector logs for diagnostics..."
             curl -sS "${JAEGER_QUERY_URL}/api/traces?service=telemetry-e2e&limit=100" || true
+            docker compose -f .github/telemetry/docker-compose.yml logs otel-collector --no-color --tail 500 || true
+            docker compose -f .github/telemetry/docker-compose.yml logs jaeger --no-color --tail 200 || true
+            # Save collector logs to a file for artifact upload
+            docker compose -f .github/telemetry/docker-compose.yml logs otel-collector --no-color --tail 500 > collector.log || true
             if [ "$attempts" -ge "$max_attempts" ]; then
               echo "All ${max_attempts} attempts failed"
               exit 1
@@ -78,6 +94,19 @@ jobs:
         with:
           name: telemetry-e2e-metrics
           path: telemetry_e2e_metrics.json
+
+      - name: Upload telemetry diagnostics artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-e2e-diagnostics
+          path: |
+            target/telemetry_e2e_timeout_diag.json
+            target/otlp_capture_dump.json
+            target/otlp_capture_*.json
+            target/otlp_capture_*.bin
+            collector.log
+          if-no-files-found: warn
 
       - name: Tear down
         if: always()

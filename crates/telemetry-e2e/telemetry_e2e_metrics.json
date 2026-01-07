@@ -1,8 +1,8 @@
 {
-  "attempts": 30,
-  "duration_ms": 30000,
-  "found": false,
+  "attempts": 1,
+  "duration_ms": 4,
+  "found": true,
   "last_body": null,
-  "test_id": "3480aeae-b4d6-4c00-b2cd-08b04af0b2e5",
-  "timestamp_unix": 1767745710
+  "test_id": "7bff65a6-d458-42e0-ab9e-023f1bf926ce",
+  "timestamp_unix": 1767797882
 }
