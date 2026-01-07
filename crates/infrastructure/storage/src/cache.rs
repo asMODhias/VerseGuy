@@ -1,10 +1,10 @@
+use crate::prelude::*;
 use lru::LruCache;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tracing::debug;
-use crate::prelude::*;
 
 /// LRU cache with TTL
 pub struct Cache<K, V> {

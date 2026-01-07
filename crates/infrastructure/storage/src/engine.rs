@@ -2,13 +2,13 @@ use crate::config::StorageConfig;
 use metrics;
 use rocksdb::{Options, DB};
 
+use crate::prelude::*;
 use std::sync::Arc;
 use std::time::Instant;
 use tracing::{debug, error, info};
-use crate::prelude::*;
 
-use rand::RngCore;
 use base64::Engine;
+use rand::RngCore;
 
 /// Storage engine wrapping RocksDB
 pub struct StorageEngine {
@@ -21,7 +21,9 @@ impl StorageEngine {
     /// Open storage engine
     pub fn open(config: StorageConfig) -> AppResult<Self> {
         // Validate config first
-        config.validate().with_context(|| "Invalid storage configuration")?;
+        config
+            .validate()
+            .with_context(|| "Invalid storage configuration")?;
 
         info!(
             path = %config.path.display(),
@@ -57,7 +59,8 @@ impl StorageEngine {
         // Open database
         let db = DB::open(&opts, &config.path).map_err(|e| {
             error!(error = %e, "Failed to open database");
-            storage_err(format!("Failed to open database: {}", e)).context(format!("path={}", config.path.display()))
+            storage_err(format!("Failed to open database: {}", e))
+                .context(format!("path={}", config.path.display()))
         })?;
 
         // Setup encryption
@@ -93,7 +96,8 @@ impl StorageEngine {
         // Decrypt if encryption is enabled
         let decrypted = if let Some(data) = result {
             if let Some(key) = &self.encryption_key {
-                let encrypted_str = String::from_utf8(data).map_err(|e| storage_err(format!("Invalid UTF-8 in encrypted data: {}", e)))?;
+                let encrypted_str = String::from_utf8(data)
+                    .map_err(|e| storage_err(format!("Invalid UTF-8 in encrypted data: {}", e)))?;
 
                 let decrypted = crate::engine::security_fallback::decrypt_data(&encrypted_str, key)
                     .with_context(|| "Failed to decrypt data")?;
@@ -166,11 +170,13 @@ impl StorageEngine {
         let iter = self.db.prefix_iterator(prefix);
 
         for item in iter {
-            let (key, value) = item.map_err(|e| storage_err(format!("Failed to iterate: {}", e)))?;
+            let (key, value) =
+                item.map_err(|e| storage_err(format!("Failed to iterate: {}", e)))?;
 
             // Decrypt value if needed
             let decrypted_value = if let Some(enc_key) = &self.encryption_key {
-                let encrypted_str = String::from_utf8(value.to_vec()).map_err(|e| storage_err(format!("Invalid UTF-8 in encrypted data: {}", e)))?;
+                let encrypted_str = String::from_utf8(value.to_vec())
+                    .map_err(|e| storage_err(format!("Invalid UTF-8 in encrypted data: {}", e)))?;
 
                 crate::engine::security_fallback::decrypt_data(&encrypted_str, enc_key)
                     .with_context(|| "Failed to decrypt data")?
@@ -246,8 +252,8 @@ impl StorageEngine {
 
 mod security_fallback {
     use crate::prelude::*;
-    use rand::RngCore;
     use base64::Engine;
+    use rand::RngCore;
 
     /// Simple XOR-based fallback encryption + base64 encode
     pub fn encrypt_data(value: &[u8], key: &[u8; 32]) -> AppResult<String> {
@@ -259,7 +265,9 @@ mod security_fallback {
     }
 
     pub fn decrypt_data(encrypted: &str, key: &[u8; 32]) -> AppResult<Vec<u8>> {
-        let mut decoded = base64::engine::general_purpose::STANDARD.decode(encrypted).map_err(|e| internal_err(format!("Failed to base64-decode: {}", e)))?;
+        let mut decoded = base64::engine::general_purpose::STANDARD
+            .decode(encrypted)
+            .map_err(|e| internal_err(format!("Failed to base64-decode: {}", e)))?;
         for (i, b) in decoded.iter_mut().enumerate() {
             *b ^= key[i % key.len()];
         }

@@ -1,7 +1,7 @@
 //! Database schema and key generation
-//! 
+//!
 //! All keys follow the pattern: `entity_type:id`
-//! 
+//!
 //! Examples:
 //! - `user:uuid`
 //! - `organization:uuid`

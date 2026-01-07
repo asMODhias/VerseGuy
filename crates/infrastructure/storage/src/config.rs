@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use crate::prelude::*;
 use base64::Engine;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 /// Storage configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,12 +59,14 @@ impl StorageConfig {
     pub fn validate(&self) -> AppResult<()> {
         // Path validation
         if self.path.to_str().is_some_and(|s| s.is_empty()) {
-            return Err(configuration_err("Database path cannot be empty")).with_context(|| "field=path");
+            return Err(configuration_err("Database path cannot be empty"))
+                .with_context(|| "field=path");
         }
 
         // Cache size validation
         if self.cache_size_mb == 0 {
-            return Err(configuration_err("Cache size must be > 0")).with_context(|| "field=cache_size_mb");
+            return Err(configuration_err("Cache size must be > 0"))
+                .with_context(|| "field=cache_size_mb");
         }
 
         if self.cache_size_mb > 8192 {
@@ -77,17 +79,23 @@ impl StorageConfig {
         if self.encryption_enabled {
             if let Some(key) = &self.encryption_key {
                 // Decode base64
-                let decoded = base64::engine::general_purpose::STANDARD.decode(key).map_err(|e| configuration_err(format!("Invalid encryption key: {}", e))).with_context(|| "field=encryption_key")?;
+                let decoded = base64::engine::general_purpose::STANDARD
+                    .decode(key)
+                    .map_err(|e| configuration_err(format!("Invalid encryption key: {}", e)))
+                    .with_context(|| "field=encryption_key")?;
 
                 if decoded.len() != 32 {
-                    return Err(configuration_err("Encryption key must be 32 bytes")).with_context(|| "field=encryption_key").with_context(|| format!("actual_length={}", decoded.len()));
+                    return Err(configuration_err("Encryption key must be 32 bytes"))
+                        .with_context(|| "field=encryption_key")
+                        .with_context(|| format!("actual_length={}", decoded.len()));
                 }
             }
         }
 
         // Backup validation
         if self.backup_retention == 0 {
-            return Err(configuration_err("Backup retention must be > 0")).with_context(|| "field=backup_retention");
+            return Err(configuration_err("Backup retention must be > 0"))
+                .with_context(|| "field=backup_retention");
         }
 
         Ok(())

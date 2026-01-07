@@ -1,9 +1,9 @@
+use crate::prelude::*;
 use crate::{engine::StorageEngine, error::StorageError};
 use serde::{de::DeserializeOwned, Serialize};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use tracing::{debug, warn};
-use crate::prelude::*;
 
 /// Entity trait for storable types
 pub trait Entity: Serialize + DeserializeOwned + Send + Sync {
@@ -42,7 +42,11 @@ impl<T: Entity> Repository<T> {
         // Check for version conflict (optimistic locking)
         if let Some(existing) = self.get(entity.id())? {
             if existing.version() != entity.version() {
-                return Err(storage_err(format!("Version conflict for {}/{}", T::entity_type(), entity.id())));
+                return Err(storage_err(format!(
+                    "Version conflict for {}/{}",
+                    T::entity_type(),
+                    entity.id()
+                )));
             }
         }
 
@@ -89,7 +93,8 @@ impl<T: Entity> Repository<T> {
 
     /// Get entity by ID (returns error if not found)
     pub fn get_required(&self, id: &str) -> AppResult<T> {
-        self.get(id)?.ok_or_else(|| storage_err(format!("Not found: {}/{}", T::entity_type(), id)))
+        self.get(id)?
+            .ok_or_else(|| storage_err(format!("Not found: {}/{}", T::entity_type(), id)))
     }
 
     /// Delete entity
@@ -97,11 +102,7 @@ impl<T: Entity> Repository<T> {
         let key = self.make_key(id);
         self.engine.delete(&key)?;
 
-        debug!(
-            entity_type = T::entity_type(),
-            id = id,
-            "Entity deleted"
-        );
+        debug!(entity_type = T::entity_type(), id = id, "Entity deleted");
 
         Ok(())
     }

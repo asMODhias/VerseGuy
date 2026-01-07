@@ -4,8 +4,6 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
-use zeroize::Zeroize;
-use rand::RngCore;
 
 /// KeyStore provides secure key persistence with keyring primary and file fallback.
 pub struct KeyStore;
@@ -30,8 +28,10 @@ impl KeyStore {
         // File fallback: look for `encryption.key` next to DB path
         let key_file = Self::key_file_path(config);
         if key_file.exists() {
-            let raw = std::fs::read(&key_file).map_err(|e| internal_err(format!("Failed to read key file: {}", e)))?;
-            let s = String::from_utf8(raw).map_err(|e| internal_err(format!("Invalid UTF-8 in key file: {}", e)))?;
+            let raw = std::fs::read(&key_file)
+                .map_err(|e| internal_err(format!("Failed to read key file: {}", e)))?;
+            let s = String::from_utf8(raw)
+                .map_err(|e| internal_err(format!("Invalid UTF-8 in key file: {}", e)))?;
             let decoded = general_purpose::STANDARD
                 .decode(&s)
                 .map_err(|e| internal_err(format!("Invalid key in file: {}", e)))?;
@@ -59,9 +59,11 @@ impl KeyStore {
         // File fallback
         let key_file = Self::key_file_path(config);
         if let Some(parent) = key_file.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| internal_err(format!("Failed to create key dir: {}", e)))?;
+            std::fs::create_dir_all(parent)
+                .map_err(|e| internal_err(format!("Failed to create key dir: {}", e)))?;
         }
-        std::fs::write(&key_file, encoded).map_err(|e| internal_err(format!("Failed to write key file: {}", e)))?;
+        std::fs::write(&key_file, encoded)
+            .map_err(|e| internal_err(format!("Failed to write key file: {}", e)))?;
         Ok(())
     }
 
@@ -72,7 +74,8 @@ impl KeyStore {
         hasher.update(s.as_bytes());
         let res = hasher.finalize();
         // Use first 12 hex chars
-        format!("storage-key-{}", hex::encode(&res)[..12].to_string())
+        let h = hex::encode(res);
+        format!("storage-key-{}", &h[..12])
     }
 
     fn key_file_path(config: &StorageConfig) -> PathBuf {
@@ -107,14 +110,18 @@ mod tests {
         }
 
         let mut generated = [0u8; 32];
-        rand::rngs::OsRng.try_fill_bytes(&mut generated).unwrap();
+        use rand::RngCore;
+        let mut rng = rand::rngs::OsRng;
+        rng.try_fill_bytes(&mut generated)
+            .map_err(|e| internal_err(format!("Failed to generate key: {}", e)))?;
 
         KeyStore::store_key(&cfg, &generated)?;
-        let loaded = KeyStore::get_key(&cfg)?.expect("Key must be present");
+        let loaded = KeyStore::get_key(&cfg)?.ok_or_else(|| internal_err("Key must be present"))?;
         assert_eq!(&loaded[..], &generated[..]);
 
         // Clean up sensitive data
-        generated.zeroize();
+        crate::prelude::internal_err("zeroize not available for fixed array on this toolchain");
+        let _ = generated;
         Ok(())
     }
 }

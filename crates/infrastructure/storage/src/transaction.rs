@@ -1,6 +1,6 @@
 use crate::engine::StorageEngine;
-use std::sync::{Arc, Mutex};
 use crate::prelude::*;
+use std::sync::{Arc, Mutex};
 
 /// Transaction for atomic operations
 pub struct Transaction {
@@ -26,7 +26,10 @@ impl Transaction {
 
     /// Add put operation
     pub fn put(&self, key: &[u8], value: &[u8]) -> AppResult<()> {
-        let mut ops = self.operations.lock().map_err(|e| internal_err(format!("Failed to lock operations: {}", e)))?;
+        let mut ops = self
+            .operations
+            .lock()
+            .map_err(|e| internal_err(format!("Failed to lock operations: {}", e)))?;
 
         ops.push(Operation::Put {
             key: key.to_vec(),
@@ -38,7 +41,10 @@ impl Transaction {
 
     /// Add delete operation
     pub fn delete(&self, key: &[u8]) -> AppResult<()> {
-        let mut ops = self.operations.lock().map_err(|e| internal_err(format!("Failed to lock operations: {}", e)))?;
+        let mut ops = self
+            .operations
+            .lock()
+            .map_err(|e| internal_err(format!("Failed to lock operations: {}", e)))?;
 
         ops.push(Operation::Delete { key: key.to_vec() });
 
@@ -47,7 +53,10 @@ impl Transaction {
 
     /// Commit transaction
     pub fn commit(self) -> AppResult<()> {
-        let ops = self.operations.lock().map_err(|e| internal_err(format!("Failed to lock operations: {}", e)))?;
+        let ops = self
+            .operations
+            .lock()
+            .map_err(|e| internal_err(format!("Failed to lock operations: {}", e)))?;
 
         // Execute all operations
         for op in ops.iter() {
@@ -62,7 +71,10 @@ impl Transaction {
         }
 
         // Mark as committed
-        *self.committed.lock().map_err(|e| internal_err(format!("Failed to lock committed flag: {}", e)))? = true;
+        *self
+            .committed
+            .lock()
+            .map_err(|e| internal_err(format!("Failed to lock committed flag: {}", e)))? = true;
 
         // Flush to ensure durability
         self.engine.flush()?;
