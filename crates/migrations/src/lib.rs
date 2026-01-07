@@ -130,6 +130,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used, clippy::disallowed_methods)]
     fn test_apply_and_rollback() -> Result<()> {
         let td = tempdir()?;
         let storage = Storage::open(td.path())?;
