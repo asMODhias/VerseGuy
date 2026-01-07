@@ -36,10 +36,19 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
     use opentelemetry_sdk::Resource;
 
     let tracer_provider = if use_http {
+        // If user provided the default gRPC endpoint, prefer the HTTP port 4318 for OTLP/HTTP
+        let http_endpoint = if otlp_endpoint.ends_with(":4317") {
+            otlp_endpoint.replacen(":4317", ":4318", 1)
+        } else if otlp_endpoint.ends_with(':') {
+            format!("{}4318", otlp_endpoint)
+        } else {
+            otlp_endpoint.clone()
+        };
         if debug {
             eprintln!(
-                "Using OTLP HTTP exporter -> {}/v1/traces",
-                otlp_endpoint.trim_end_matches('/'),
+                "Using OTLP HTTP exporter -> {}/v1/traces (derived from {})",
+                http_endpoint.trim_end_matches('/'),
+                otlp_endpoint
             );
         }
         opentelemetry_otlp::new_pipeline()
@@ -47,7 +56,7 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
             .with_exporter(
                 opentelemetry_otlp::new_exporter()
                     .http()
-                    .with_endpoint(format!("{}/v1/traces", otlp_endpoint.trim_end_matches('/')))
+                    .with_endpoint(http_endpoint.clone())
                     .with_http_client(reqwest::Client::new()),
             )
             .with_trace_config(
