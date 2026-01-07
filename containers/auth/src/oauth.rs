@@ -28,7 +28,11 @@ impl OAuthHandler {
                 .build()
             {
                 Ok(c) => c,
-                Err(e) => panic!("Failed to build HTTP client: {}", e),
+                Err(e) => {
+                    tracing::error!("Failed to build HTTP client with timeout: {}", e);
+                    // Fallback to default client
+                    Client::new()
+                }
             },
             configs: HashMap::new(),
             states: Arc::new(RwLock::new(HashMap::new())),
@@ -59,7 +63,7 @@ impl OAuthHandler {
             Ok(mut states) => {
                 states.insert(state.clone(), s);
             }
-            Err(e) => panic!("oauth states RwLock poisoned: {:?}", e),
+            Err(e) => return Err(anyhow::anyhow!("oauth states RwLock poisoned: {:?}", e)),
         }
 
         // Build auth URL
@@ -94,7 +98,7 @@ impl OAuthHandler {
         let oauth_state = {
             let mut states = match self.states.write() {
                 Ok(s) => s,
-                Err(e) => panic!("oauth states RwLock poisoned: {:?}", e),
+                Err(e) => return Err(anyhow::anyhow!("oauth states RwLock poisoned: {:?}", e)),
             };
             states
                 .remove(&state)
