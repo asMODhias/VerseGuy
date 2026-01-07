@@ -1,8 +1,8 @@
+use chrono::Utc;
+use tempfile::TempDir;
 use verseguy_audit_infra::{AuditEvent, AuditStore};
 use verseguy_storage_infra::config::StorageConfig;
 use verseguy_storage_infra::engine::StorageEngine;
-use tempfile::TempDir;
-use chrono::Utc;
 
 #[test]
 fn retention_and_gdpr_integration() -> verseguy_storage_infra::prelude::AppResult<()> {

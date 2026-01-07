@@ -48,14 +48,20 @@ impl AuditStore {
         Ok(())
     }
 
-    pub fn list_recent(&self, limit: usize) -> verseguy_storage_infra::prelude::AppResult<Vec<AuditEvent>> {
+    pub fn list_recent(
+        &self,
+        limit: usize,
+    ) -> verseguy_storage_infra::prelude::AppResult<Vec<AuditEvent>> {
         let mut all = self.repo.list()?;
         all.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
         Ok(all.into_iter().take(limit).collect())
     }
 
     /// Purge events older than `older_than`. Returns number of deleted events.
-    pub fn purge_older_than(&self, older_than: DateTime<Utc>) -> verseguy_storage_infra::prelude::AppResult<usize> {
+    pub fn purge_older_than(
+        &self,
+        older_than: DateTime<Utc>,
+    ) -> verseguy_storage_infra::prelude::AppResult<usize> {
         let to_delete = self.repo.find(|e| e.timestamp < older_than)?;
         for e in &to_delete {
             self.repo.delete(&e.id)?;
@@ -63,8 +69,20 @@ impl AuditStore {
         Ok(to_delete.len())
     }
 
+    /// Find events older than `older_than` without deleting them (useful for dry-run).
+    pub fn find_older_than(
+        &self,
+        older_than: DateTime<Utc>,
+    ) -> verseguy_storage_infra::prelude::AppResult<Vec<AuditEvent>> {
+        let found = self.repo.find(|e| e.timestamp < older_than)?;
+        Ok(found)
+    }
+
     /// Delete all events for a given principal (GDPR support). Returns number of deleted events.
-    pub fn delete_by_principal(&self, principal_id: &str) -> verseguy_storage_infra::prelude::AppResult<usize> {
+    pub fn delete_by_principal(
+        &self,
+        principal_id: &str,
+    ) -> verseguy_storage_infra::prelude::AppResult<usize> {
         let to_delete = self.repo.find(|e| e.principal_id == principal_id)?;
         for e in &to_delete {
             self.repo.delete(&e.id)?;
@@ -73,12 +91,14 @@ impl AuditStore {
     }
 
     /// Run retention by days (helper): deletes events older than `days` days and returns deleted count.
-    pub fn run_retention_days(&self, days: i64) -> verseguy_storage_infra::prelude::AppResult<usize> {
+    pub fn run_retention_days(
+        &self,
+        days: i64,
+    ) -> verseguy_storage_infra::prelude::AppResult<usize> {
         let cutoff = Utc::now() - chrono::Duration::days(days);
         self.purge_older_than(cutoff)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -104,7 +124,11 @@ mod tests {
             principal_id: "user-1".to_string(),
             action: "create:org".to_string(),
             resource: "org:123".to_string(),
-            metadata: serde_json::json!({"foo": "bar"}),
+            metadata: {
+                let mut m = serde_json::Map::new();
+                m.insert("foo".to_string(), serde_json::Value::String("bar".to_string()));
+                serde_json::Value::Object(m)
+            },
             version: 0,
         };
 
@@ -135,7 +159,7 @@ mod tests {
             principal_id: "user-old".to_string(),
             action: "old_action".to_string(),
             resource: "res:1".to_string(),
-            metadata: serde_json::json!({}),
+            metadata: serde_json::Value::Object(serde_json::Map::new()),
             version: 0,
         };
         store.record(&mut old)?;
@@ -147,7 +171,7 @@ mod tests {
             principal_id: "user-new".to_string(),
             action: "new_action".to_string(),
             resource: "res:2".to_string(),
-            metadata: serde_json::json!({}),
+            metadata: serde_json::Value::Object(serde_json::Map::new()),
             version: 0,
         };
         store.record(&mut recent)?;
@@ -166,7 +190,7 @@ mod tests {
             principal_id: "gdpr-user".to_string(),
             action: "act1".to_string(),
             resource: "r1".to_string(),
-            metadata: serde_json::json!({}),
+            metadata: serde_json::Value::Object(serde_json::Map::new()),
             version: 0,
         };
         let mut e2 = e1.clone();

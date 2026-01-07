@@ -116,7 +116,10 @@ mod tests {
         assert!(evaluate_policy("not(role:owner)", roles)?);
         assert!(!evaluate_policy("not(role:admin)", roles)?);
         // Nested
-        assert!(evaluate_policy("any(all(role:user, role:admin), role:owner)", roles)?);
+        assert!(evaluate_policy(
+            "any(all(role:user, role:admin), role:owner)",
+            roles
+        )?);
         Ok(())
     }
 }

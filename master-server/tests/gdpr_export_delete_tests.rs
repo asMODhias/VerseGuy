@@ -72,9 +72,10 @@ async fn audit_export_and_delete_user_data() {
         name: "compliance".to_string(),
         version: 0,
     };
-    must(state
-        .storage
-        .put(format!("role:{}", compliance_role.id).as_bytes(), &compliance_role));
+    must(state.storage.put(
+        format!("role:{}", compliance_role.id).as_bytes(),
+        &compliance_role,
+    ));
 
     let actor_id = "actor-1".to_string();
     let assign = AssignmentRec {
@@ -82,9 +83,11 @@ async fn audit_export_and_delete_user_data() {
         role_id: compliance_role.id.clone(),
         version: 0,
     };
-    must(state
-        .storage
-        .put(format!("assignment:{}", assign.user_id).as_bytes(), &assign));
+    must(
+        state
+            .storage
+            .put(format!("assignment:{}", assign.user_id).as_bytes(), &assign),
+    );
 
     // Create a policy `compliance:delete` that requires role:compliance
     #[derive(serde::Serialize)]
@@ -100,14 +103,16 @@ async fn audit_export_and_delete_user_data() {
         policy: "role:compliance".to_string(),
         version: 0,
     };
-    must(state
-        .storage
-        .put(format!("policy:{}", p.id).as_bytes(), &p));
+    must(state.storage.put(format!("policy:{}", p.id).as_bytes(), &p));
 
     // Create a session token for the actor and store session via SessionService
     let session_service = verseguy_auth::SessionService::new(state.license_secret.clone());
-    let token = must(session_service
-        .create_and_store_session(&actor_id, &verseguy_auth::License::Enterprise, 1, &(*state.storage)));
+    let token = must(session_service.create_and_store_session(
+        &actor_id,
+        &verseguy_auth::License::Enterprise,
+        1,
+        &state.storage,
+    ));
 
     // Delete user data with Authorization header
     let req3 = must(
@@ -144,10 +149,12 @@ async fn audit_export_and_delete_user_data() {
         "missing actor entries",
     );
     // there should be at least one entry and at least one should contain "audit.delete"
-    assert!(entries_actor.len() >= 1);
-    assert!(entries_actor
-        .iter()
-        .any(|e| e.get("event").and_then(|ev| ev.as_str()).map(|s| s.contains("audit.delete")).unwrap_or(false)));
+    assert!(!entries_actor.is_empty());
+    assert!(entries_actor.iter().any(|e| e
+        .get("event")
+        .and_then(|ev| ev.as_str())
+        .map(|s| s.contains("audit.delete"))
+        .unwrap_or(false)));
 
     // Export should now be empty for user-42
     let req4 = must(

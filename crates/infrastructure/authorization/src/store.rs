@@ -123,9 +123,7 @@ impl AuthStore {
         license_store: &verseguy_licensing_infra::LicensingStore,
         license_id: &str,
     ) -> AppResult<bool> {
-        let checker = |feat: &str| -> anyhow::Result<bool> {
-            Ok(license_store.license_has_feature(license_id, feat)?)
-        };
+        let checker = |feat: &str| -> anyhow::Result<bool> { license_store.license_has_feature(license_id, feat) };
         self.evaluate_with_license_checker(policy_name, user_id, checker)
     }
 }
@@ -295,7 +293,12 @@ mod tests {
         assert!(!store.evaluate_for_user("admin_or_featurex", &a.user_id)?);
 
         // But with license, the policy should pass
-        assert!(store.evaluate_with_licensing_store("admin_or_featurex", &a.user_id, &license_store, &l.id)?);
+        assert!(store.evaluate_with_licensing_store(
+            "admin_or_featurex",
+            &a.user_id,
+            &license_store,
+            &l.id
+        )?);
 
         Ok(())
     }

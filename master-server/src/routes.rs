@@ -544,12 +544,14 @@ use axum::http::HeaderMap;
 use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
+#[allow(dead_code)]
 struct AssignmentRec {
     pub user_id: String,
     pub role_id: String,
     pub version: u64,
 }
 
+#[allow(dead_code)]
 #[derive(serde::Deserialize)]
 struct RoleRec {
     pub id: String,
@@ -567,16 +569,20 @@ pub async fn user_data_delete_handler(
     let auth_header = headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
-        .ok_or((StatusCode::UNAUTHORIZED, "missing authorization".to_string()))?;
+        .ok_or((
+            StatusCode::UNAUTHORIZED,
+            "missing authorization".to_string(),
+        ))?;
 
-    let token = auth_header
-        .strip_prefix("Bearer ")
-        .ok_or((StatusCode::UNAUTHORIZED, "invalid authorization format".to_string()))?;
+    let token = auth_header.strip_prefix("Bearer ").ok_or((
+        StatusCode::UNAUTHORIZED,
+        "invalid authorization format".to_string(),
+    ))?;
 
     // Validate session token
     let session_service = SessionService::new(state.license_secret.clone());
     let token_data = session_service
-        .validate_token_and_storage(token, &(*state.storage))
+        .validate_token_and_storage(token, &state.storage)
         .map_err(|e| (StatusCode::UNAUTHORIZED, format!("{}", e)))?;
     let actor_id = token_data.claims.sub;
 
@@ -602,7 +608,9 @@ pub async fn user_data_delete_handler(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
     for p in policies {
         // Attempt to deserialize into Policy; ignore deserialization errors
-        if let Ok(pol) = serde_json::from_value::<verseguy_authorization::store::Policy>(serde_json::to_value(&p).unwrap_or(serde_json::Value::Null)) {
+        if let Ok(pol) = serde_json::from_value::<verseguy_authorization::store::Policy>(
+            serde_json::to_value(&p).unwrap_or(serde_json::Value::Null),
+        ) {
             if pol.name == "compliance:delete" {
                 policy_opt = Some(pol);
                 break;
@@ -610,16 +618,15 @@ pub async fn user_data_delete_handler(
         }
     }
 
-    let mut authorized = false;
-    if let Some(pol) = policy_opt {
+    let authorized = if let Some(pol) = policy_opt {
         // Evaluate using the existing policy engine
         let role_refs: Vec<&str> = actor_roles.iter().map(String::as_str).collect();
-        authorized = verseguy_authorization::policy::evaluate_policy(&pol.policy, &role_refs)
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+        verseguy_authorization::policy::evaluate_policy(&pol.policy, &role_refs)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?
     } else {
         // Fallback: require admin role
-        authorized = actor_roles.iter().any(|r| r == "admin");
-    }
+        actor_roles.iter().any(|r| r == "admin")
+    };
 
     if !authorized {
         return Err((StatusCode::FORBIDDEN, "forbidden".to_string()));

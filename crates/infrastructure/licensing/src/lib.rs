@@ -57,16 +57,26 @@ impl LicensingStore {
         }
     }
 
-    pub fn create_license(&self, l: &mut License) -> verseguy_storage_infra::prelude::AppResult<()> {
+    pub fn create_license(
+        &self,
+        l: &mut License,
+    ) -> verseguy_storage_infra::prelude::AppResult<()> {
         self.repo.save(l)?;
         Ok(())
     }
 
-    pub fn get_license(&self, id: &str) -> verseguy_storage_infra::prelude::AppResult<Option<License>> {
+    pub fn get_license(
+        &self,
+        id: &str,
+    ) -> verseguy_storage_infra::prelude::AppResult<Option<License>> {
         self.repo.get(id)
     }
 
-    pub fn license_has_feature(&self, id: &str, feat: &str) -> verseguy_storage_infra::prelude::AppResult<bool> {
+    pub fn license_has_feature(
+        &self,
+        id: &str,
+        feat: &str,
+    ) -> verseguy_storage_infra::prelude::AppResult<bool> {
         if let Some(l) = self.get_license(id)? {
             Ok(l.is_valid() && l.has_feature(feat))
         } else {

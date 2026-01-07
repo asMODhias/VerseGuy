@@ -1,10 +1,10 @@
+use chrono::Utc;
 use std::env;
 use std::process;
 use std::sync::Arc;
-use chrono::Utc;
+use verseguy_audit_infra::AuditStore;
 use verseguy_storage_infra::config::StorageConfig;
 use verseguy_storage_infra::engine::StorageEngine;
-use verseguy_audit_infra::AuditStore;
 
 fn print_usage() {
     eprintln!("Usage: retention_runner --db-path <path> [--days <days>] [--dry-run]");
@@ -61,7 +61,10 @@ fn main() {
         }
     };
 
-    println!("Retention runner starting: db={} days={} dry_run={}", db_path, days, dry_run);
+    println!(
+        "Retention runner starting: db={} days={} dry_run={}",
+        db_path, days, dry_run
+    );
 
     let cfg = StorageConfig {
         path: std::path::PathBuf::from(db_path),
@@ -81,9 +84,13 @@ fn main() {
 
     if dry_run {
         let cutoff = Utc::now() - chrono::Duration::days(days);
-        match store.repo.find(|e| e.timestamp < cutoff) {
+        match store.find_older_than(cutoff) {
             Ok(list) => {
-                println!("Dry-run: would delete {} events older than {} days", list.len(), days);
+                println!(
+                    "Dry-run: would delete {} events older than {} days",
+                    list.len(),
+                    days
+                );
             }
             Err(e) => {
                 eprintln!("Error enumerating old events: {}", e);
