@@ -23,6 +23,8 @@ members = [
     "crates/shared/test_utils",
     "crates/telemetry-e2e",
     "crates/infrastructure/storage",
+    "crates/infrastructure/authorization",
+    "crates/infrastructure/licensing",
     "crates/migrations",
 ]
 

@@ -4670,10 +4670,8 @@ Missing:
   ⚠️  Replication support
 
 Next Steps:
-  → TEIL 6: Authentication (Enterprise)
-  → Use storage layer for user management
-  → Implement session management
-  → Add OAuth integration
+  → TEIL 6: Authentication (Enterprise) — Completed (Auth crate, session store, OAuth client abstraction, integration tests, CI job)
+  → TEIL 7: Authorization & Licensing — **In Arbeit**: scaffolding for `verseguy_authorization` and `verseguy_licensing_infra` added; next: RBAC, policy engine, licensing checks, and CI tests
 ```
 
 ---

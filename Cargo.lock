@@ -5888,6 +5888,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "verseguy_authorization"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "uuid",
+ "verseguy_storage_infra",
+]
+
+[[package]]
 name = "verseguy_compliance"
 version = "0.1.0"
 dependencies = [
@@ -5912,6 +5924,17 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
+]
+
+[[package]]
+name = "verseguy_licensing_infra"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "uuid",
 ]
 
 [[package]]
