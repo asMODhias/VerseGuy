@@ -1,5 +1,6 @@
 #![allow(
     clippy::disallowed_methods,
+    clippy::unwrap_used,
     clippy::collapsible_if,
     clippy::single_match,
     clippy::manual_unwrap_or_default,
