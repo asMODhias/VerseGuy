@@ -15,11 +15,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Rust (stable)
+      - name: Set up Rust (nightly)
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
+          profile: minimal
 
       - name: Install cargo-audit
         run: cargo install --locked cargo-audit

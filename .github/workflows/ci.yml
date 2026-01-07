@@ -29,8 +29,9 @@ jobs:
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
+          profile: minimal
 
       - name: rustfmt check
         run: cargo fmt --all -- --check
@@ -86,8 +87,9 @@ jobs:
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
+          profile: minimal
 
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
@@ -116,8 +118,9 @@ jobs:
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           override: true
+          profile: minimal
 
       - name: Run master-server tests
         run: |
