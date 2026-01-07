@@ -15,6 +15,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Ensure local rcgen patch (if missing)
+        run: |
+          # Some CI runs may not have the local patched rcgen checkout. If the path dependency
+          # `patches/rcgen/rcgen` is missing, clone a known rcgen repo into that path so
+          # Cargo can resolve the path dependency during the job.
+          if [ ! -f patches/rcgen/rcgen/Cargo.toml ]; then
+            echo "patches/rcgen/rcgen not found. Cloning rcgen into patches/rcgen/rcgen..."
+            mkdir -p patches/rcgen
+            git clone https://github.com/est31/rcgen patches/rcgen/rcgen
+          else
+            echo "patches/rcgen/rcgen already present"
+          fi
+
       - name: Ensure Docker Compose available
         run: docker compose version
 
