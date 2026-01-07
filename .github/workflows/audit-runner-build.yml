@@ -1,0 +1,49 @@
+name: Audit Runner - Build & Publish
+
+on:
+  push:
+    branches: [ main ]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build binary and Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Build retention_runner (release)
+        run: cargo build -p verseguy_audit_infra --bin retention_runner --release
+
+      - name: Copy binary to crate dir
+        run: cp target/release/retention_runner crates/infrastructure/audit/retention_runner
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: crates/infrastructure/audit
+          file: crates/infrastructure/audit/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/verseguy-audit-runner:${{ github.sha }}
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: retention-runner-binary
+          path: crates/infrastructure/audit/retention_runner
+
+      - name: Cleanup binary
+        if: always()
+        run: rm -f crates/infrastructure/audit/retention_runner

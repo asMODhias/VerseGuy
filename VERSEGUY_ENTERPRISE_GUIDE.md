@@ -7293,8 +7293,139 @@ spec:
 - Integrationstest `crates/infrastructure/audit/tests/retention_tests.rs` prüft Purge & GDPR‑Löschung.
 - CI Workflow `.github/workflows/audit-retention.yml` führt die Tests automatisch aus.
 
+## 8.5 Build & Local CI
+
+- Ein lokales Buildskript liegt unter `crates/infrastructure/audit/scripts/build-retention-runner.sh`.
+  - Beispiel: `./crates/infrastructure/audit/scripts/build-retention-runner.sh my-tag` baut das Binary und erzeugt ein Docker‑Image `ghcr.io/<org>/verseguy-audit-runner:my-tag`.
+- GitHub Actions Workflow `.github/workflows/audit-runner-build.yml` (manuell auslösbar) baut die Binärdatei, erstellt ein Docker‑Image und lädt die Binärdatei als Artefakt hoch.
+- Lokaler Test-Workflow (Empfehlung): Verwende `cargo test -p verseguy_audit_infra` oder `act` um Workflows lokal zu prüfen.
+
+**Beispiel: Lokaler Ablauf**
+
+```bash
+# Unit & Integration Tests
+cargo test -p verseguy_audit_infra
+
+# Build & dry-run docker image locally
+./crates/infrastructure/audit/scripts/build-retention-runner.sh local
+
+docker run --rm ghcr.io/<org>/verseguy-audit-runner:local --db-path /data/audit_db --days 30 --dry-run
+```
+
 ---
 
+## 8.6 GDPR API — Endpoints & Examples
+
+Designprinzipien:
+- Jeder Löschvorgang MUSS **auditiert** werden (wer hat gelöscht, wann, warum).
+- Lösch-APIs sind **authentifiziert** und nur für berechtigte Rollen verfügbar (z. B. `admin`, `compliance` Service Accounts).
+- Löschungen sind **idempotent** und kehren bei Fehlern nicht zu inkonsistenten Zuständen zurück.
+
+Empfohlene Endpoints (HTTP/JSON):
+
+- DELETE /api/v1/audit/principal/{principal_id}
+  - Beschreibung: Löscht (oder anonymisiert) alle Audit‑Events für `principal_id`.
+  - Auth: Bearer Token mit `scope:compliance:delete` oder `role=admin`
+  - Response 200: { deleted: <n> }
+  - Response 404: { deleted: 0 }
+
+- POST /api/v1/audit/purge
+  - Body: { "older_than": "ISO8601-Timestamp" }
+  - Beschreibung: Purge von Events älter als `older_than`.
+  - Auth: `role=admin` oder Service Account
+  - Response 200: { deleted: <n>, cutoff: "..." }
+
+Beispiel: Curl
+
+```bash
+# GDPR delete
+curl -X DELETE \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "https://api.example.com/api/v1/audit/principal/user-123"
+
+# Purge older than 30 days
+curl -X POST \
+  -H "Authorization: Bearer $SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"older_than": "2025-12-01T00:00:00Z"}' \
+  "https://api.example.com/api/v1/audit/purge"
+```
+
+Operational Notes:
+- **Soft-delete vs Hard-delete**: Empfohlen ist ein zweistufiger Prozess: zuerst Anonymisierung (soft-delete) für Compliance‑Requests, optionales vollständiges Entfernen aus dem DB im zweiten Schritt nach Prüfungen.
+- **Persistent delete audit events**: Löschvorgänge werden zusätzlich als **immutable** Audit‑Events in einem separaten Namespace `audit_delete:` gespeichert (append‑only). Diese sind von normalen Audit‑Purge/Retention‑Operationen ausgenommen, werden aber bei Exporten (z.B. `/audit/export/:user`) mitgeliefert, damit Compliance‑Akteure Lösch‑Belege nachprüfen können.
+- **Retention** wird durch den Retention‑Runner (Cron/Timer/CronJob) automatisiert.
+
+---
+
+## 8.7 Ops Playbook & Runbook
+
+Zweck: schnelle, verlässliche Schritte für Betreiber bei Vorfällen oder Routineaufgaben.
+
+Tägliche Routine:
+- Überprüfe den Status des Retention‑Jobs (Cron/Timer/K8s CronJob) und erfolgreiche Durchläufe in den Logs.
+- Prüfe Metriken: `retention_run_success_total`, `audit_events_deleted_total`.
+
+Incident: Unbeabsichtigte Löschung / Rollback
+1. STOPPE den Retention Runner (systemd stop oder suspend CronJob).
+2. Prüfe Backups und wiederherstellbare Snapshots (RocksDB Backup). Führe Wiederherstellung in einer Testumgebung durch.
+3. Falls möglich, re-importiere Events aus Backup und markiere sie als wiederhergestellt (Audit‑Event: `recovery:<incident_id>`).
+4. Erstelle Post‑Mortem mit Root Cause, Fix und Lessons Learned.
+
+GDPR Request Handling (Ops Flow):
+1. Empfangenes Request prüfen (identität, scope).
+2. Auth & Authorization prüfen (nur berechtigte Rollen).
+3. Führe `DELETE /api/v1/audit/principal/{id}` aus.
+4. Dokumentiere den Vorgang und informiere Compliance.
+
+---
+
+## 8.8 Monitoring, Metrics & Alerts
+
+Empfohlene Metriken (Prometheus):
+- `audit_events_total` (Counter) — Gesamtzahl der geschriebenen Audit‑Events
+- `audit_events_deleted_total` (Counter) — Anzahl gelöschter Events (purges + GDPR)
+- `retention_runs_total` (Counter) — Anzahl durchgeführter Retention‑Runs
+- `retention_run_success_total` / `retention_run_failure_total` (Counter)
+- `gdpr_delete_requests_total` (Counter) — Anzahl empfangener GDPR Requests
+
+Alert‑Regeln (Beispiele):
+- Alert: retention-failed — `retention_run_failure_total > 0` für 5m
+- Alert: unexpected-deletes — plötzlicher Anstieg `audit_events_deleted_total` (z.B. > X in 10m) → Pager Duty
+- Alert: gdpr-delete-anomaly — ungewöhnlicher Anstieg `gdpr_delete_requests_total` (z.B. > 5 in 10m OR rate >> baseline) → Pager Duty + Slack #security
+- Tip: configure rate-based alerting using Prometheus recording rules, or use anomaly detection (e.g., `increase(gdpr_delete_requests_total[10m]) > 5` or `predict_linear` for trends)
+- Alert: gdpr-delete-unverified — `gdpr_delete_requests_total > 0 AND audit_events_deleted_total == 0` → Investigate
+
+Tracing / Logging:
+- Jeder Retention‑Job schreibt Trace/Log mit `timeout`, `deleted_count`, `duration_ms`.
+- GDPR‑Delete API schreibt strukturiertes Audit‑Event mit `action: audit.delete`, `principal_id`, `actor_id`, `request_id`.
+
+---
+
+## 8.9 Security & Audit of Deletes
+
+- Every deletion operation MUST be audited by creating a special `audit_event` of type `audit.delete` that includes:
+  - actor (who triggered delete)
+  - target principal_id
+  - reason / request id
+  - deleted_count (if available)
+- Store the delete audit event in a separate namespace (`audit_delete:`) with immutability guarantees (append-only) so it cannot be trivially removed. These events are excluded from automated purges but are included in exports for auditability.
+- Increment metrics on delete operations: `gdpr_delete_requests_total` (counter) and increase `audit_events_deleted_total` by the number of audit events removed. Add alerting rules for anomalous increases (see alerts below).
+- Access to deletion endpoints must be restricted and logged (RBAC + API tokens + mTLS for service accounts).
+
+---
+
+## 8.10 Abschließende Checkliste (TEIL 8)
+
+- [x] Audit event model & storage
+- [x] Retention (TTL) implementation + tests
+- [x] GDPR delete endpoint + tests (design & examples)
+- [x] Retention Runner (binary) + Dockerfile + build workflow
+- [x] CI: `audit-retention.yml` + `audit-runner-build.yml`
+- [x] Ops Playbook, Monitoring & Alerts
+- [x] Documentation: TEIL 8 ergänzt (Runbook, API Samples)
+
+---
 
 
 ## 📊 TEIL 7 - STATUS REPORT
