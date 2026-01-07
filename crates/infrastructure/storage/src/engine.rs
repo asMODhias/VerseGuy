@@ -8,7 +8,6 @@ use std::time::Instant;
 use tracing::{debug, error, info};
 
 use base64::Engine;
-use rand::RngCore;
 
 /// Storage engine wrapping RocksDB
 pub struct StorageEngine {
@@ -215,6 +214,63 @@ impl StorageEngine {
             .ok_or_else(|| storage_err("Stats not available".to_string()))
     }
 
+    /// Re-encrypt all values that can be decrypted with one of `old_keys` using `new_key`.
+    /// This operation attempts to decrypt each value using the provided old keys and, when
+    /// successful, writes the newly encrypted value using `new_key`.
+    pub fn re_encrypt_all(&self, old_keys: &[[u8; 32]], new_key: &[u8; 32]) -> AppResult<()> {
+        let iter = self.db.iterator(rocksdb::IteratorMode::Start);
+
+        for item in iter {
+            let (k, v) = item.map_err(|e| storage_err(format!("Failed to iterate: {}", e)))?;
+
+            // If encryption is disabled, skip
+            if !self._config.encryption_enabled {
+                continue;
+            }
+
+            // Attempt to decrypt with any of the old keys
+            let mut decrypted_opt: Option<Vec<u8>> = None;
+            if let Ok(s) = String::from_utf8(v.to_vec()) {
+                for ok in old_keys {
+                    if let Ok(dec) = crate::engine::security_fallback::decrypt_data(&s, ok) {
+                        decrypted_opt = Some(dec);
+                        break;
+                    }
+                }
+            }
+
+            if let Some(decrypted) = decrypted_opt {
+                // Encrypt with new key and store
+                let encrypted =
+                    crate::engine::security_fallback::encrypt_data(&decrypted, new_key)?;
+                self.db.put(&k, encrypted.into_bytes()).map_err(|e| {
+                    storage_err(format!("Failed to write re-encrypted value: {}", e))
+                })?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Rotate the encryption key: persist new key (via KeyStore) and re-encrypt data.
+    pub fn rotate_key_and_reencrypt(&mut self, new_key: &[u8; 32]) -> AppResult<()> {
+        // Gather old keys for fallback
+        let old_keys = crate::key_store::KeyStore::get_all_keys(&self._config)?;
+
+        // Persist new key (backups of the old key are created by rotate_key)
+        crate::key_store::KeyStore::rotate_key(&self._config, new_key)?;
+
+        // Update in-memory key so subsequent reads use new key
+        self.encryption_key = Some(*new_key);
+
+        // Re-encrypt existing records
+        self.re_encrypt_all(&old_keys, new_key)?;
+
+        // Flush to disk
+        self.flush()?;
+
+        Ok(())
+    }
     /// Load or generate encryption key
     fn load_or_generate_key(config: &StorageConfig) -> AppResult<[u8; 32]> {
         // 1) Prefer explicit config-provided key
@@ -240,7 +296,9 @@ impl StorageEngine {
         // 3) Generate a new key and persist it
         let mut key = [0u8; 32];
         let mut rng = rand::rngs::OsRng;
-        let _ = rng.try_fill_bytes(&mut key);
+        use rand::RngCore;
+        rng.try_fill_bytes(&mut key)
+            .map_err(|e| internal_err(format!("Failed to generate key: {}", e)))?;
 
         if let Err(e) = crate::key_store::KeyStore::store_key(config, &key) {
             tracing::warn!(error = %e, "Failed to persist encryption key (keyring/file fallback)");

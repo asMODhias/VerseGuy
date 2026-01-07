@@ -2,6 +2,7 @@ use crate::config::StorageConfig;
 use crate::prelude::*;
 use base64::engine::general_purpose;
 use base64::Engine;
+use chrono::Utc;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 
@@ -65,6 +66,67 @@ impl KeyStore {
         std::fs::write(&key_file, encoded)
             .map_err(|e| internal_err(format!("Failed to write key file: {}", e)))?;
         Ok(())
+    }
+
+    /// Rotate existing key: backup current key (file fallback) and store `new_key` as primary
+    pub fn rotate_key(config: &StorageConfig, new_key: &[u8; 32]) -> AppResult<()> {
+        // Backup current key if present
+        if let Some(old) = Self::get_key(config)? {
+            // Prefer file backup for simplicity (we keep backups alongside DB)
+            let key_file = Self::key_file_path(config);
+            if key_file.exists() {
+                if let Some(parent) = key_file.parent() {
+                    let bak_name =
+                        format!("encryption.key.bak.{}", Utc::now().format("%Y%m%d%H%M%S"));
+                    let bak_path = parent.join(bak_name);
+                    std::fs::write(&bak_path, general_purpose::STANDARD.encode(old)).map_err(
+                        |e| internal_err(format!("Failed to write key backup file: {}", e)),
+                    )?;
+                }
+            } else {
+                // No file key present; try to store old under a keyring bak name
+                let name = Self::make_key_name(config);
+                let bakname = format!("{}.bak.{}", name, Utc::now().format("%Y%m%d%H%M%S"));
+                let entry = keyring::Entry::new("verseguy", &bakname);
+                let _ = entry.set_password(&general_purpose::STANDARD.encode(old));
+            }
+        }
+
+        // Persist new key as primary
+        Self::store_key(config, new_key)
+    }
+
+    /// Return all known keys from file backups + primary (used for migration fallback)
+    pub fn get_all_keys(config: &StorageConfig) -> AppResult<Vec<[u8; 32]>> {
+        let mut keys = Vec::new();
+        if let Some(k) = Self::get_key(config)? {
+            keys.push(k);
+        }
+
+        let key_file = Self::key_file_path(config);
+        if let Some(parent) = key_file.parent() {
+            if let Ok(iter) = std::fs::read_dir(parent) {
+                for entry in iter.flatten() {
+                    if let Some(name) = entry.file_name().to_str() {
+                        if name.starts_with("encryption.key.bak") {
+                            if let Ok(raw) = std::fs::read(entry.path()) {
+                                if let Ok(s) = String::from_utf8(raw) {
+                                    if let Ok(decoded) = general_purpose::STANDARD.decode(&s) {
+                                        if decoded.len() == 32 {
+                                            let mut arr = [0u8; 32];
+                                            arr.copy_from_slice(&decoded);
+                                            keys.push(arr);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(keys)
     }
 
     fn make_key_name(config: &StorageConfig) -> String {
