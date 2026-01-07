@@ -4685,6 +4685,10 @@ Next Steps:
 
 # 🔐 TEIL 6: AUTHENTICATION (ENTERPRISE)
 
+**Status:** _In Arbeit_ — Crate `verseguy_auth` **gescaffoldet**; **User-Repository implementiert**; **Session-Store implementiert**; **OAuth client abstraction implemented** (Unit/Integration-Tests PASS). Lokale Prüfung: `cargo test -p verseguy_auth` erfolgreich.
+
+**Nächste Schritte:** Ergänze OAuth provider configs and integration tests (Google, Discord), **CI:** Neue GitHub Actions workflow `.github/workflows/auth-integration.yml` hinzugefügt, führt `cargo test -p verseguy_auth --tests` und `cargo clippy` aus. Lokale Tests wurden erfolgreich ausgeführt.
+
 ## 6.1 Authentication Crate Setup
 
 ```toml
