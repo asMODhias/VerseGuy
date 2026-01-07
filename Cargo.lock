@@ -5896,6 +5896,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "uuid",
+ "verseguy_licensing_infra",
  "verseguy_storage_infra",
 ]
 
@@ -5931,10 +5932,12 @@ name = "verseguy_licensing_infra"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "serde",
  "serde_json",
  "tempfile",
  "uuid",
+ "verseguy_storage_infra",
 ]
 
 [[package]]

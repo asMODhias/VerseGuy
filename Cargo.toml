@@ -25,6 +25,7 @@ members = [
     "crates/infrastructure/storage",
     "crates/infrastructure/authorization",
     "crates/infrastructure/licensing",
+    "crates/infrastructure/audit",
     "crates/migrations",
 ]
 

@@ -1,0 +1,49 @@
+name: Authorization & Licensing Integration
+
+on:
+  pull_request:
+    paths:
+      - 'crates/infrastructure/authorization/**'
+      - 'crates/infrastructure/licensing/**'
+      - '.github/workflows/authorization-licensing-integration.yml'
+  push:
+    branches:
+      - main
+      - feat/authorization/store
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install dependencies
+        run: cargo fetch
+
+      - name: Run authorization & licensing tests
+        run: |
+          cargo test -p verseguy_authorization --all-features --tests
+          cargo test -p verseguy_licensing_infra --all-features --tests
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: authz-licensing-logs
+          path: target/debug

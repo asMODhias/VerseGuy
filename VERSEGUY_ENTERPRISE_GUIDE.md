@@ -7109,6 +7109,194 @@ impl From<AuthorizationError> for AppError {
 
 ---
 
+## 7.3 Policy‑Sprache — Spezifikation & Beispiele
+
+Die Policy‑Sprache ist bewusst einfach, ausdrucksstark und deterministisch implementiert. Sie ist als kleine Ausdruckssprache gedacht, die in Policies (`Policy.policy`) als String gespeichert wird.
+
+**Syntax (Kurzüberblick):**
+
+- `allow_all` — lässt alle Anfragen zu
+- `role:<name>` — true, wenn der Nutzer die Rolle `<name>` besitzt
+- `license:<feature>` — true, wenn die angegebene Lizenz (`LicensingStore`) das Feature hat
+- `any(expr, expr, ...)` — true, wenn mindestens ein Sub‑Ausdruck true ist
+- `all(expr, expr, ...)` — true, wenn alle Sub‑Ausdrücke true sind
+- `not(expr)` — logische Negation
+
+**Wichtige Regeln:**
+- Ausdrücke sind rekursiv und unterstützen Verschachtelung (z. B. `any(all(role:user, role:admin), license:feature_x)`).
+- Unbekannte Ausdrücke führen zu einem **deny** (safer default).
+- Kommas werden nur auf Top‑Level (nicht innerhalb verschachtelter Klammern) als Trenner interpretiert.
+
+**Beispiele:**
+
+- `role:admin` — nur Admins
+- `any(role:admin, role:moderator)` — Admins oder Moderatoren
+- `any(role:admin, license:feature_x)` — Admins oder Nutzer mit Lizenz, die `feature_x` freischaltet
+- `all(role:user, not(role:banned))` — normale Nutzer, die nicht gesperrt sind
+
+**Code‑Beispiele (Rust):**
+
+```rust
+// Policy lokal auswerten (nur anhand Rollen)
+let ok = store.evaluate("policy_name", &roles_vec)?;
+
+// Policy für einen Nutzer evaluieren
+let ok = store.evaluate_for_user("policy_name", &user_id)?;
+
+// Policy mit Lizenzprüfung evaluieren (Integration mit LicensingStore)
+let ok = store.evaluate_with_licensing_store("policy_name", &user_id, &license_store, &license_id)?;
+```
+
+---
+
+## 7.4 Datenmodell & Persistenz
+
+**Entities:**
+- `Role { id, name, version }` — rollenbasierter Zugang (z. B. `admin`, `moderator`)
+- `Assignment { user_id, role_id, version }` — Zuordnung Nutzer → Rolle
+- `Policy { id, name, policy, version }` — gespeicherte Policies (String‑Ausdruck)
+- `License { id, product, tier, features, expires_at, valid, version }` — Lizenzdaten
+
+**Persistenzdetails:**
+- Verwendet `verseguy_storage_infra::Repository<T>` für `save`, `get`, `delete`, `find`.
+- `Repository::save` führt eine Versionsprüfung (optimistic locking) durch; Tests müssen Version-Updates beachten.
+
+---
+
+## 7.5 Integration‑ & Test‑Pattern
+
+- Unit‑Tests für die Policy‑Engine prüfen Ausdruckssyntax, Klammerung und Kantenfälle (unknown → deny).
+- Integrationstests (`AuthStore` + `LicensingStore`) benutzen `tempfile::TempDir` + `StorageEngine::open` für isolierte Datenbanken.
+- Typische Testabläufe:
+  1. Erzeuge Rollen/Assignments
+  2. Erzeuge Lizenz mit Features (oder simuliere Ablauf)
+  3. Erzeuge Policy (z. B. `any(role:admin, license:feature_x)`)
+  4. Evaluieren mit/ohne Lizenz / mit geänderter Version
+
+**Test‑Beispiel:**
+
+```rust
+// Setup
+let engine = Arc::new(StorageEngine::open(cfg)?);
+let auth_store = AuthStore::new(engine.clone());
+let license_store = LicensingStore::new(engine.clone());
+
+// Create role, assign user, create license and policy; assert expected outcomes
+```
+
+---
+
+## 7.6 CI & Workflow
+
+- Workflow: `.github/workflows/authorization-licensing-integration.yml` wurde hinzugefügt.
+  - Schritte: Checkout (inkl. Submodule), Rust toolchain, `cargo test` für Authorization & Licensing.
+- Hinweis: Der `rcgen`‑Patch wird momentan aus einem Fork (`asMODhias/rcgen`) bezogen; CI checkt Submodule rekursiv aus, sodass die gepatchte Version verfügbar ist.
+
+---
+
+## 7.7 Migration, Rollout & Betriebshinweise
+
+- Backwards compatibility: Policies sind Strings — neue Operatoren sind optional, bestehende Policies bleiben gültig.
+- Rollout‑Plan:
+  1. Merge `feat/authorization/store` nach `main` (nach Review & CI grünen)
+  2. Optional: Backfill / Migration für Policies (falls neue Policies erzeugt werden müssen)
+  3. Monitor: Telemetrie‑Events (`policy.eval=true/false`) erfassen
+- Upstreaming Patch: Empfehlenswert ist ein PR gegen `est31/rcgen`, damit wir später wieder auf das Original‑Repo verweisen können.
+
+---
+
+## 7.8 Abschließende Checkliste (TEIL 7)
+
+- [x] Authorization Crate: Struktur & Repositories
+- [x] RBAC: `Role`, `Assignment`, persistente Speicherung
+- [x] Policy Engine: `role`, `any`, `all`, `not`, `license` (inkl. Tests)
+- [x] Licensing infra: `License`, `LicensingStore`, Feature‑Checks
+- [x] Integration tests: auth + licensing
+- [x] CI: `authorization-licensing-integration.yml`
+- [x] Dokumentation: TEIL 7 ausführlich dokumentiert
+
+---
+
+# 📋 TEIL 8: AUDIT & COMPLIANCE (RUNNER)
+
+## 8.1 Zielsetzung
+
+Audit‑Logs sind für Compliance und Troubleshooting essenziell. TEIL 8 beinhaltet:
+
+- Strukturierte Audit‑Events mit persistenter Speicherung
+- Retention (TTL) Policies und sichere Löschung (GDPR)
+- Ein kleiner Retention‑Runner als Binary zum periodischen Ausführen (Cron/ systemd / K8s CronJob)
+- Operational Playbook und CI‑Tests
+
+## 8.2 Retention‑Runner — Konzept
+
+- Ein einfaches Binary `retention_runner` ist in `crates/infrastructure/audit/src/bin/retention_runner.rs` enthalten.
+- Funktionen:
+  - `--db-path <path>` oder Umgebungsvariable `AUDIT_DB_PATH` zur Angabe des DB‑Pfads
+  - `--days <n>` (Standard 30) — löscht Events älter als n Tage
+  - `--dry-run` — zeigt an, wie viele Events gelöscht würden
+- Betriebsmodi: Cron / systemd timer / Kubernetes CronJob
+
+## 8.3 Betriebsbeispiele
+
+Systemd (Timer + Service):
+
+```ini
+# /etc/systemd/system/retention-runner.service
+[Unit]
+Description=VerseGuy Audit Retention Runner
+After=network.target
+
+[Service]
+Type=oneshot
+Environment=AUDIT_DB_PATH=/var/lib/verseguy/audit_db
+ExecStart=/usr/bin/retention_runner --db-path /var/lib/verseguy/audit_db --days 30
+User=verseguy
+
+# /etc/systemd/system/retention-runner.timer
+[Unit]
+Description=Run VerseGuy audit retention daily
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Kubernetes CronJob (Beispiel):
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: verseguy-audit-retention
+spec:
+  schedule: "0 2 * * *"  # täglich 02:00 UTC
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: retention-runner
+            image: ghcr.io/your-org/verseguy:latest
+            command: ["/usr/local/bin/retention_runner", "--db-path", "/data/audit_db", "--days", "30"]
+            env:
+            - name: AUDIT_DB_PATH
+              value: "/data/audit_db"
+          restartPolicy: OnFailure
+```
+
+## 8.4 Tests & CI
+
+- Integrationstest `crates/infrastructure/audit/tests/retention_tests.rs` prüft Purge & GDPR‑Löschung.
+- CI Workflow `.github/workflows/audit-retention.yml` führt die Tests automatisch aus.
+
+---
+
+
+
 ## 📊 TEIL 7 - STATUS REPORT
 
 ```yaml
@@ -7127,6 +7315,9 @@ Completed:
      - Expiry validation
      - Feature checking
      - Tamper detection
+  ✅ Licensing infra
+     - `License` entity with tier, features and expiry
+     - `LicensingStore` (storage-backed) with feature checks and unit tests
   ✅ License generator (server-side)
      - Ed25519 signing
      - Base64 encoding
@@ -7136,11 +7327,19 @@ Completed:
      - Role hierarchy (User/Moderator/Admin)
      - Permission checker
      - Multi-permission checks
+     - **Policy expression language** (`role:`, `any(...)`, `all(...)`, `not(...)`) implemented
+     - **Policy license checks**: `license:<feature>` expression supported and integrable with `LicensingStore`
   ✅ Authorization service
      - Permission checking
      - Feature gating
      - Resource access control
-  ✅ Comprehensive tests (5/5 passing)
+  ✅ Unit & integration tests added and passing locally
+  ✅ AuthStore conveniences: `evaluate_for_user` and `evaluate_with_licensing_store` added
+  ✅ CI: Added `authorization-licensing-integration.yml` GitHub Actions workflow to run authz/licensing tests in CI
+
+Notes:
+  ⚠️ Submodul-Patch: Ein benötigter Patch für das Dependency `rcgen` konnte nicht direkt ins Upstream-Repo `est31/rcgen` gepusht werden (403 - Permission denied).
+  Ich habe den Patch in meinen Fork `https://github.com/asMODhias/rcgen` gepusht und die Submodul-Referenz in diesem Repository auf den Fork aktualisiert, damit CI und lokale Builds die gepatchte Version verwenden können. Wir belassen die Referenz auf den Fork, bis ein Upstream-PR angenommen wird oder eine alternative Lösung vereinbart ist.
 
 Quality Metrics:
   Code Coverage: 90%
