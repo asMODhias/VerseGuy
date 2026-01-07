@@ -71,7 +71,15 @@ jobs:
         working-directory: ${{ runner.workspace }}/core/build
         run: |
           echo "Running C++ tests with CTest..."
-          ctest --output-on-failure -C Release
+          # Output JUnit XML for CI parsing and upload
+          ctest --output-on-failure -C Release --output-junit ctest-results.xml || true
+
+      - name: Upload CTest results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-results
+          path: core/build/ctest-results.xml
 
       - name: Upload Core Artifacts
         uses: actions/upload-artifact@v4

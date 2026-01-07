@@ -72,11 +72,18 @@ impl StorageEngine {
         info!("Storage engine opened successfully");
         metrics::counter!("storage_opened_total", 1);
 
-        Ok(Self {
+        // Build engine instance
+        let engine = Self {
             db: Arc::new(db),
             _config: config,
             encryption_key,
-        })
+        };
+
+        // Run migrations (if any) on startup — use a no-op manager by default.
+        let mgr = crate::migration::MigrationManager::new();
+        mgr.run(&engine)?;
+
+        Ok(engine)
     }
 
     /// Get value by key
