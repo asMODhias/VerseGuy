@@ -7,6 +7,7 @@ use serde_json::Value;
 use uuid::Uuid;
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::disallowed_methods, clippy::collapsible_if, unused_variables)]
 async fn otlp_trace_reaches_jaeger() -> Result<()> {
     let otlp_endpoint =
         std::env::var("OTLP_ENDPOINT").unwrap_or_else(|_| "http://127.0.0.1:4317".into());
@@ -315,11 +316,10 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
             if sleep_ms > max_backoff_ms {
                 sleep_ms = max_backoff_ms;
             }
-            let jitter = (std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .subsec_nanos()
-                % 1000) as u64;
+            let jitter = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+                Ok(d) => (d.subsec_nanos() % 1000) as u64,
+                Err(_) => 0u64,
+            };
             let sleep_ms = sleep_ms + jitter;
             tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
         }
@@ -351,26 +351,24 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
     };
 
     let duration_ms = duration.as_millis();
+    let timestamp_unix = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(d) => d.as_secs(),
+        Err(_) => 0u64,
+    };
     let metrics = serde_json::json!({
         "test_id": test_id,
         "found": found,
         "attempts": attempts_used.unwrap_or(attempts),
         "duration_ms": duration_ms,
         "last_body": last_body,
-        "timestamp_unix": std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0),
+        "timestamp_unix": timestamp_unix,
     });
     let metrics_path = std::env::var("TELEMETRY_METRICS_FILE")
         .unwrap_or_else(|_| "telemetry_e2e_metrics.json".into());
-    if let Err(e) = std::fs::write(
-        &metrics_path,
-        serde_json::to_string_pretty(&metrics).unwrap(),
-    ) {
-        eprintln!("Failed to write metrics file {}: {}", metrics_path, e);
-    } else {
-        eprintln!("Wrote metrics to {}", metrics_path);
+    let body = serde_json::to_string_pretty(&metrics)?;
+    match std::fs::write(&metrics_path, &body) {
+        Ok(_) => eprintln!("Wrote metrics to {}", metrics_path),
+        Err(e) => eprintln!("Failed to write metrics file {}: {}", metrics_path, e),
     }
 
     assert!(
