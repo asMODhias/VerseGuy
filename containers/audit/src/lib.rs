@@ -95,7 +95,10 @@ impl AuditService {
     }
 
     pub fn export_for_user(&self, user_id: &str) -> Result<Vec<AuditEntry>> {
+        // Export from both regular audit and immutable delete-audit namespaces so that delete events are discoverable
         let mut items: Vec<AuditEntry> = self.db.prefix_scan(b"audit:")?;
+        let mut delete_items: Vec<AuditEntry> = self.db.prefix_scan(b"audit_delete:")?;
+        items.append(&mut delete_items);
         items.retain(|e| e.user_id.as_deref() == Some(user_id));
         // sort deterministically by seq (insertion order)
         items.sort_by(|a, b| a.seq.cmp(&b.seq));
@@ -103,6 +106,9 @@ impl AuditService {
     }
 
     /// Delete all audit entries for a given user and return the number deleted
+    /// Note: this deletes only from the regular `audit:` namespace. Entries in
+    /// `audit_delete:` are intentionally preserved to maintain an immutable
+    /// record of deletion operations.
     pub fn delete_for_user(&self, user_id: &str) -> Result<usize> {
         let items: Vec<AuditEntry> = self.db.prefix_scan(b"audit:")?;
         let mut deleted = 0usize;
@@ -115,5 +121,46 @@ impl AuditService {
             deleted += 1;
         }
         Ok(deleted)
+    }
+
+    /// Log an immutable deletion audit event into a separate namespace `audit_delete:`.
+    /// These are not removed by `delete_for_user` and are meant to be append-only.
+    pub fn log_delete_event(&self, user_id: Option<String>, event: String) -> Result<AuditEntry> {
+        // Use separate metadata keys to preserve independent chains
+        let prev_hash: Option<String> = self.db.get(b"audit_delete_meta:last_hash")?;
+        let last_seq_opt: Option<i64> = self.db.get(b"audit_delete_meta:last_seq")?;
+        let seq = last_seq_opt.map(|s| s + 1).unwrap_or(1);
+
+        let id = Uuid::new_v4().to_string();
+        let timestamp = Utc::now().timestamp_millis();
+
+        // compute hash = sha256(prev_hash || timestamp || user_id || event)
+        let mut hasher = Sha256::new();
+        if let Some(ref p) = prev_hash {
+            hasher.update(p.as_bytes());
+        }
+        hasher.update(timestamp.to_string().as_bytes());
+        if let Some(ref u) = user_id {
+            hasher.update(u.as_bytes());
+        }
+        hasher.update(event.as_bytes());
+        let hash = hex::encode(hasher.finalize());
+
+        let entry = AuditEntry {
+            id: id.clone(),
+            prev_hash: prev_hash.clone(),
+            seq,
+            timestamp,
+            user_id,
+            event,
+            hash: hash.clone(),
+        };
+
+        let key = format!("audit_delete:{}", id);
+        self.db.put(key.as_bytes(), &entry)?;
+        self.db.put(b"audit_delete_meta:last_hash", &entry.hash)?;
+        self.db.put(b"audit_delete_meta:last_seq", &seq)?;
+
+        Ok(entry)
     }
 }

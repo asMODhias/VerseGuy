@@ -3089,6 +3089,7 @@ dependencies = [
  "uuid",
  "verseguy_audit",
  "verseguy_auth",
+ "verseguy_authorization",
  "verseguy_compliance",
  "verseguy_licensing",
  "verseguy_storage",
@@ -5862,6 +5863,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "verseguy_audit_infra"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
+ "uuid",
+ "verseguy_storage_infra",
+]
+
+[[package]]
 name = "verseguy_auth"
 version = "0.1.0"
 dependencies = [
@@ -5885,6 +5899,19 @@ dependencies = [
  "uuid",
  "verseguy_storage",
  "verseguy_test_utils",
+]
+
+[[package]]
+name = "verseguy_authorization"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "uuid",
+ "verseguy_licensing_infra",
+ "verseguy_storage_infra",
 ]
 
 [[package]]
@@ -5912,6 +5939,19 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
+]
+
+[[package]]
+name = "verseguy_licensing_infra"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "uuid",
+ "verseguy_storage_infra",
 ]
 
 [[package]]

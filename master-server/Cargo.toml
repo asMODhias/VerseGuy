@@ -28,6 +28,7 @@ verseguy_licensing = { path = "../containers/licensing" }
 plugins-base-organization = { path = "../plugins/base/organization" }
 verseguy_compliance = { path = "../containers/compliance" }
 verseguy_audit = { path = "../containers/audit" }
+verseguy_authorization = { path = "../crates/infrastructure/authorization" }
 sha2 = "0.10"
 hyper = { version = "0.14", features = ["server"] }
 

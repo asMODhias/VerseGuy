@@ -540,34 +540,130 @@ pub async fn audit_export_handler(
     Ok(Json(serde_json::json!({"entries": entries})))
 }
 
+use axum::http::HeaderMap;
+use uuid::Uuid;
+
+#[derive(serde::Deserialize)]
+#[allow(dead_code)]
+struct AssignmentRec {
+    pub user_id: String,
+    pub role_id: String,
+    pub version: u64,
+}
+
+#[allow(dead_code)]
+#[derive(serde::Deserialize)]
+struct RoleRec {
+    pub id: String,
+    pub name: String,
+    pub version: u64,
+}
+
 #[allow(clippy::disallowed_methods)]
 pub async fn user_data_delete_handler(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     Path(user_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    // Delete user data from storage
-    let deleted_records = verseguy_compliance::gdpr::delete_user_data(&state.storage, &user_id)
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("{}", e),
-            )
-        })?;
+    // Extract Authorization header (Bearer)
+    let auth_header = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .ok_or((
+            StatusCode::UNAUTHORIZED,
+            "missing authorization".to_string(),
+        ))?;
 
-    // Delete audit entries
+    let token = auth_header.strip_prefix("Bearer ").ok_or((
+        StatusCode::UNAUTHORIZED,
+        "invalid authorization format".to_string(),
+    ))?;
+
+    // Validate session token
+    let session_service = SessionService::new(state.license_secret.clone());
+    let token_data = session_service
+        .validate_token_and_storage(token, &state.storage)
+        .map_err(|e| (StatusCode::UNAUTHORIZED, format!("{}", e)))?;
+    let actor_id = token_data.claims.sub;
+
+    // Evaluate a named policy `compliance:delete` for the actor (fallback to admin role if policy not found)
+    // Gather the actor's role names
+    let assignments: Vec<AssignmentRec> = (*state.storage)
+        .prefix_scan(b"assignment:")
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let mut actor_roles: Vec<String> = Vec::new();
+    for a in assignments.into_iter().filter(|a| a.user_id == actor_id) {
+        let role_opt: Option<RoleRec> = (*state.storage)
+            .get(format!("role:{}", a.role_id).as_bytes())
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+        if let Some(r) = role_opt {
+            actor_roles.push(r.name);
+        }
+    }
+
+    // Try to find a policy named `compliance:delete`
+    let mut policy_opt: Option<verseguy_authorization::store::Policy> = None;
+    let policies: Vec<serde_json::Value> = (*state.storage)
+        .prefix_scan(b"policy:")
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    for p in policies {
+        // Attempt to deserialize into Policy; ignore deserialization errors
+        if let Ok(pol) = serde_json::from_value::<verseguy_authorization::store::Policy>(
+            serde_json::to_value(&p).unwrap_or(serde_json::Value::Null),
+        ) {
+            if pol.name == "compliance:delete" {
+                policy_opt = Some(pol);
+                break;
+            }
+        }
+    }
+
+    let authorized = if let Some(pol) = policy_opt {
+        // Evaluate using the existing policy engine
+        let role_refs: Vec<&str> = actor_roles.iter().map(String::as_str).collect();
+        verseguy_authorization::policy::evaluate_policy(&pol.policy, &role_refs)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?
+    } else {
+        // Fallback: require admin role
+        actor_roles.iter().any(|r| r == "admin")
+    };
+
+    if !authorized {
+        return Err((StatusCode::FORBIDDEN, "forbidden".to_string()));
+    }
+
+    // Proceed with deletion of personal data
+    let deleted_records = verseguy_compliance::gdpr::delete_user_data(&state.storage, &user_id)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+
+    // Delete audit entries for the principal and capture how many were deleted
     let audit = verseguy_audit::AuditService::new(state.storage.clone());
-    let deleted_audit = audit.delete_for_user(&user_id).map_err(|e| {
-        (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            format!("{}", e),
-        )
-    })?;
+    let deleted_audit = audit
+        .delete_for_user(&user_id)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
 
     // Delete ToS acceptance if present
     let tos_key = format!("tos:{}", user_id);
     let _ = (*state.storage).delete(tos_key.as_bytes());
 
-    Ok(Json(
-        serde_json::json!({"deleted": deleted_audit + if deleted_records { 1 } else { 0 }}),
-    ))
+    // Record an immutable audit event for this delete action in the protected namespace
+    let deleted_count = deleted_audit + if deleted_records { 1 } else { 0 };
+    let request_id = Uuid::new_v4().to_string();
+    let event = serde_json::json!({
+        "action": "audit.delete",
+        "principal_id": user_id,
+        "request_id": request_id,
+        "deleted_count": deleted_count
+    })
+    .to_string();
+
+    // increment metrics: total gdpr requests and number of audit events deleted
+    metrics::increment_counter!("gdpr_delete_requests_total");
+    metrics::counter!("audit_events_deleted_total", deleted_count as u64);
+
+    let _ = audit
+        .log_delete_event(Some(actor_id), event)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+
+    Ok(Json(serde_json::json!({ "deleted": deleted_count })))
 }

@@ -4670,10 +4670,8 @@ Missing:
   ⚠️  Replication support
 
 Next Steps:
-  → TEIL 6: Authentication (Enterprise)
-  → Use storage layer for user management
-  → Implement session management
-  → Add OAuth integration
+  → TEIL 6: Authentication (Enterprise) — Completed (Auth crate, session store, OAuth client abstraction, integration tests, CI job)
+  → TEIL 7: Authorization & Licensing — **In Arbeit**: scaffolding for `verseguy_authorization` and `verseguy_licensing_infra` added; next: RBAC, policy engine, licensing checks, and CI tests
 ```
 
 ---
@@ -7111,6 +7109,325 @@ impl From<AuthorizationError> for AppError {
 
 ---
 
+## 7.3 Policy‑Sprache — Spezifikation & Beispiele
+
+Die Policy‑Sprache ist bewusst einfach, ausdrucksstark und deterministisch implementiert. Sie ist als kleine Ausdruckssprache gedacht, die in Policies (`Policy.policy`) als String gespeichert wird.
+
+**Syntax (Kurzüberblick):**
+
+- `allow_all` — lässt alle Anfragen zu
+- `role:<name>` — true, wenn der Nutzer die Rolle `<name>` besitzt
+- `license:<feature>` — true, wenn die angegebene Lizenz (`LicensingStore`) das Feature hat
+- `any(expr, expr, ...)` — true, wenn mindestens ein Sub‑Ausdruck true ist
+- `all(expr, expr, ...)` — true, wenn alle Sub‑Ausdrücke true sind
+- `not(expr)` — logische Negation
+
+**Wichtige Regeln:**
+- Ausdrücke sind rekursiv und unterstützen Verschachtelung (z. B. `any(all(role:user, role:admin), license:feature_x)`).
+- Unbekannte Ausdrücke führen zu einem **deny** (safer default).
+- Kommas werden nur auf Top‑Level (nicht innerhalb verschachtelter Klammern) als Trenner interpretiert.
+
+**Beispiele:**
+
+- `role:admin` — nur Admins
+- `any(role:admin, role:moderator)` — Admins oder Moderatoren
+- `any(role:admin, license:feature_x)` — Admins oder Nutzer mit Lizenz, die `feature_x` freischaltet
+- `all(role:user, not(role:banned))` — normale Nutzer, die nicht gesperrt sind
+
+**Code‑Beispiele (Rust):**
+
+```rust
+// Policy lokal auswerten (nur anhand Rollen)
+let ok = store.evaluate("policy_name", &roles_vec)?;
+
+// Policy für einen Nutzer evaluieren
+let ok = store.evaluate_for_user("policy_name", &user_id)?;
+
+// Policy mit Lizenzprüfung evaluieren (Integration mit LicensingStore)
+let ok = store.evaluate_with_licensing_store("policy_name", &user_id, &license_store, &license_id)?;
+```
+
+---
+
+## 7.4 Datenmodell & Persistenz
+
+**Entities:**
+- `Role { id, name, version }` — rollenbasierter Zugang (z. B. `admin`, `moderator`)
+- `Assignment { user_id, role_id, version }` — Zuordnung Nutzer → Rolle
+- `Policy { id, name, policy, version }` — gespeicherte Policies (String‑Ausdruck)
+- `License { id, product, tier, features, expires_at, valid, version }` — Lizenzdaten
+
+**Persistenzdetails:**
+- Verwendet `verseguy_storage_infra::Repository<T>` für `save`, `get`, `delete`, `find`.
+- `Repository::save` führt eine Versionsprüfung (optimistic locking) durch; Tests müssen Version-Updates beachten.
+
+---
+
+## 7.5 Integration‑ & Test‑Pattern
+
+- Unit‑Tests für die Policy‑Engine prüfen Ausdruckssyntax, Klammerung und Kantenfälle (unknown → deny).
+- Integrationstests (`AuthStore` + `LicensingStore`) benutzen `tempfile::TempDir` + `StorageEngine::open` für isolierte Datenbanken.
+- Typische Testabläufe:
+  1. Erzeuge Rollen/Assignments
+  2. Erzeuge Lizenz mit Features (oder simuliere Ablauf)
+  3. Erzeuge Policy (z. B. `any(role:admin, license:feature_x)`)
+  4. Evaluieren mit/ohne Lizenz / mit geänderter Version
+
+**Test‑Beispiel:**
+
+```rust
+// Setup
+let engine = Arc::new(StorageEngine::open(cfg)?);
+let auth_store = AuthStore::new(engine.clone());
+let license_store = LicensingStore::new(engine.clone());
+
+// Create role, assign user, create license and policy; assert expected outcomes
+```
+
+---
+
+## 7.6 CI & Workflow
+
+- Workflow: `.github/workflows/authorization-licensing-integration.yml` wurde hinzugefügt.
+  - Schritte: Checkout (inkl. Submodule), Rust toolchain, `cargo test` für Authorization & Licensing.
+- Hinweis: Der `rcgen`‑Patch wird momentan aus einem Fork (`asMODhias/rcgen`) bezogen; CI checkt Submodule rekursiv aus, sodass die gepatchte Version verfügbar ist.
+
+---
+
+## 7.7 Migration, Rollout & Betriebshinweise
+
+- Backwards compatibility: Policies sind Strings — neue Operatoren sind optional, bestehende Policies bleiben gültig.
+- Rollout‑Plan:
+  1. Merge `feat/authorization/store` nach `main` (nach Review & CI grünen)
+  2. Optional: Backfill / Migration für Policies (falls neue Policies erzeugt werden müssen)
+  3. Monitor: Telemetrie‑Events (`policy.eval=true/false`) erfassen
+- Upstreaming Patch: Empfehlenswert ist ein PR gegen `est31/rcgen`, damit wir später wieder auf das Original‑Repo verweisen können.
+
+---
+
+## 7.8 Abschließende Checkliste (TEIL 7)
+
+- [x] Authorization Crate: Struktur & Repositories
+- [x] RBAC: `Role`, `Assignment`, persistente Speicherung
+- [x] Policy Engine: `role`, `any`, `all`, `not`, `license` (inkl. Tests)
+- [x] Licensing infra: `License`, `LicensingStore`, Feature‑Checks
+- [x] Integration tests: auth + licensing
+- [x] CI: `authorization-licensing-integration.yml`
+- [x] Dokumentation: TEIL 7 ausführlich dokumentiert
+
+---
+
+# 📋 TEIL 8: AUDIT & COMPLIANCE (RUNNER)
+
+## 8.1 Zielsetzung
+
+Audit‑Logs sind für Compliance und Troubleshooting essenziell. TEIL 8 beinhaltet:
+
+- Strukturierte Audit‑Events mit persistenter Speicherung
+- Retention (TTL) Policies und sichere Löschung (GDPR)
+- Ein kleiner Retention‑Runner als Binary zum periodischen Ausführen (Cron/ systemd / K8s CronJob)
+- Operational Playbook und CI‑Tests
+
+## 8.2 Retention‑Runner — Konzept
+
+- Ein einfaches Binary `retention_runner` ist in `crates/infrastructure/audit/src/bin/retention_runner.rs` enthalten.
+- Funktionen:
+  - `--db-path <path>` oder Umgebungsvariable `AUDIT_DB_PATH` zur Angabe des DB‑Pfads
+  - `--days <n>` (Standard 30) — löscht Events älter als n Tage
+  - `--dry-run` — zeigt an, wie viele Events gelöscht würden
+- Betriebsmodi: Cron / systemd timer / Kubernetes CronJob
+
+## 8.3 Betriebsbeispiele
+
+Systemd (Timer + Service):
+
+```ini
+# /etc/systemd/system/retention-runner.service
+[Unit]
+Description=VerseGuy Audit Retention Runner
+After=network.target
+
+[Service]
+Type=oneshot
+Environment=AUDIT_DB_PATH=/var/lib/verseguy/audit_db
+ExecStart=/usr/bin/retention_runner --db-path /var/lib/verseguy/audit_db --days 30
+User=verseguy
+
+# /etc/systemd/system/retention-runner.timer
+[Unit]
+Description=Run VerseGuy audit retention daily
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Kubernetes CronJob (Beispiel):
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: verseguy-audit-retention
+spec:
+  schedule: "0 2 * * *"  # täglich 02:00 UTC
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: retention-runner
+            image: ghcr.io/your-org/verseguy:latest
+            command: ["/usr/local/bin/retention_runner", "--db-path", "/data/audit_db", "--days", "30"]
+            env:
+            - name: AUDIT_DB_PATH
+              value: "/data/audit_db"
+          restartPolicy: OnFailure
+```
+
+## 8.4 Tests & CI
+
+- Integrationstest `crates/infrastructure/audit/tests/retention_tests.rs` prüft Purge & GDPR‑Löschung.
+- CI Workflow `.github/workflows/audit-retention.yml` führt die Tests automatisch aus.
+
+## 8.5 Build & Local CI
+
+- Ein lokales Buildskript liegt unter `crates/infrastructure/audit/scripts/build-retention-runner.sh`.
+  - Beispiel: `./crates/infrastructure/audit/scripts/build-retention-runner.sh my-tag` baut das Binary und erzeugt ein Docker‑Image `ghcr.io/<org>/verseguy-audit-runner:my-tag`.
+- GitHub Actions Workflow `.github/workflows/audit-runner-build.yml` (manuell auslösbar) baut die Binärdatei, erstellt ein Docker‑Image und lädt die Binärdatei als Artefakt hoch.
+- Lokaler Test-Workflow (Empfehlung): Verwende `cargo test -p verseguy_audit_infra` oder `act` um Workflows lokal zu prüfen.
+
+**Beispiel: Lokaler Ablauf**
+
+```bash
+# Unit & Integration Tests
+cargo test -p verseguy_audit_infra
+
+# Build & dry-run docker image locally
+./crates/infrastructure/audit/scripts/build-retention-runner.sh local
+
+docker run --rm ghcr.io/<org>/verseguy-audit-runner:local --db-path /data/audit_db --days 30 --dry-run
+```
+
+---
+
+## 8.6 GDPR API — Endpoints & Examples
+
+Designprinzipien:
+- Jeder Löschvorgang MUSS **auditiert** werden (wer hat gelöscht, wann, warum).
+- Lösch-APIs sind **authentifiziert** und nur für berechtigte Rollen verfügbar (z. B. `admin`, `compliance` Service Accounts).
+- Löschungen sind **idempotent** und kehren bei Fehlern nicht zu inkonsistenten Zuständen zurück.
+
+Empfohlene Endpoints (HTTP/JSON):
+
+- DELETE /api/v1/audit/principal/{principal_id}
+  - Beschreibung: Löscht (oder anonymisiert) alle Audit‑Events für `principal_id`.
+  - Auth: Bearer Token mit `scope:compliance:delete` oder `role=admin`
+  - Response 200: { deleted: <n> }
+  - Response 404: { deleted: 0 }
+
+- POST /api/v1/audit/purge
+  - Body: { "older_than": "ISO8601-Timestamp" }
+  - Beschreibung: Purge von Events älter als `older_than`.
+  - Auth: `role=admin` oder Service Account
+  - Response 200: { deleted: <n>, cutoff: "..." }
+
+Beispiel: Curl
+
+```bash
+# GDPR delete
+curl -X DELETE \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "https://api.example.com/api/v1/audit/principal/user-123"
+
+# Purge older than 30 days
+curl -X POST \
+  -H "Authorization: Bearer $SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"older_than": "2025-12-01T00:00:00Z"}' \
+  "https://api.example.com/api/v1/audit/purge"
+```
+
+Operational Notes:
+- **Soft-delete vs Hard-delete**: Empfohlen ist ein zweistufiger Prozess: zuerst Anonymisierung (soft-delete) für Compliance‑Requests, optionales vollständiges Entfernen aus dem DB im zweiten Schritt nach Prüfungen.
+- **Persistent delete audit events**: Löschvorgänge werden zusätzlich als **immutable** Audit‑Events in einem separaten Namespace `audit_delete:` gespeichert (append‑only). Diese sind von normalen Audit‑Purge/Retention‑Operationen ausgenommen, werden aber bei Exporten (z.B. `/audit/export/:user`) mitgeliefert, damit Compliance‑Akteure Lösch‑Belege nachprüfen können.
+- **Retention** wird durch den Retention‑Runner (Cron/Timer/CronJob) automatisiert.
+
+---
+
+## 8.7 Ops Playbook & Runbook
+
+Zweck: schnelle, verlässliche Schritte für Betreiber bei Vorfällen oder Routineaufgaben.
+
+Tägliche Routine:
+- Überprüfe den Status des Retention‑Jobs (Cron/Timer/K8s CronJob) und erfolgreiche Durchläufe in den Logs.
+- Prüfe Metriken: `retention_run_success_total`, `audit_events_deleted_total`.
+
+Incident: Unbeabsichtigte Löschung / Rollback
+1. STOPPE den Retention Runner (systemd stop oder suspend CronJob).
+2. Prüfe Backups und wiederherstellbare Snapshots (RocksDB Backup). Führe Wiederherstellung in einer Testumgebung durch.
+3. Falls möglich, re-importiere Events aus Backup und markiere sie als wiederhergestellt (Audit‑Event: `recovery:<incident_id>`).
+4. Erstelle Post‑Mortem mit Root Cause, Fix und Lessons Learned.
+
+GDPR Request Handling (Ops Flow):
+1. Empfangenes Request prüfen (identität, scope).
+2. Auth & Authorization prüfen (nur berechtigte Rollen).
+3. Führe `DELETE /api/v1/audit/principal/{id}` aus.
+4. Dokumentiere den Vorgang und informiere Compliance.
+
+---
+
+## 8.8 Monitoring, Metrics & Alerts
+
+Empfohlene Metriken (Prometheus):
+- `audit_events_total` (Counter) — Gesamtzahl der geschriebenen Audit‑Events
+- `audit_events_deleted_total` (Counter) — Anzahl gelöschter Events (purges + GDPR)
+- `retention_runs_total` (Counter) — Anzahl durchgeführter Retention‑Runs
+- `retention_run_success_total` / `retention_run_failure_total` (Counter)
+- `gdpr_delete_requests_total` (Counter) — Anzahl empfangener GDPR Requests
+
+Alert‑Regeln (Beispiele):
+- Alert: retention-failed — `retention_run_failure_total > 0` für 5m
+- Alert: unexpected-deletes — plötzlicher Anstieg `audit_events_deleted_total` (z.B. > X in 10m) → Pager Duty
+- Alert: gdpr-delete-anomaly — ungewöhnlicher Anstieg `gdpr_delete_requests_total` (z.B. > 5 in 10m OR rate >> baseline) → Pager Duty + Slack #security
+- Tip: configure rate-based alerting using Prometheus recording rules, or use anomaly detection (e.g., `increase(gdpr_delete_requests_total[10m]) > 5` or `predict_linear` for trends)
+- Alert: gdpr-delete-unverified — `gdpr_delete_requests_total > 0 AND audit_events_deleted_total == 0` → Investigate
+
+Tracing / Logging:
+- Jeder Retention‑Job schreibt Trace/Log mit `timeout`, `deleted_count`, `duration_ms`.
+- GDPR‑Delete API schreibt strukturiertes Audit‑Event mit `action: audit.delete`, `principal_id`, `actor_id`, `request_id`.
+
+---
+
+## 8.9 Security & Audit of Deletes
+
+- Every deletion operation MUST be audited by creating a special `audit_event` of type `audit.delete` that includes:
+  - actor (who triggered delete)
+  - target principal_id
+  - reason / request id
+  - deleted_count (if available)
+- Store the delete audit event in a separate namespace (`audit_delete:`) with immutability guarantees (append-only) so it cannot be trivially removed. These events are excluded from automated purges but are included in exports for auditability.
+- Increment metrics on delete operations: `gdpr_delete_requests_total` (counter) and increase `audit_events_deleted_total` by the number of audit events removed. Add alerting rules for anomalous increases (see alerts below).
+- Access to deletion endpoints must be restricted and logged (RBAC + API tokens + mTLS for service accounts).
+
+---
+
+## 8.10 Abschließende Checkliste (TEIL 8)
+
+- [x] Audit event model & storage
+- [x] Retention (TTL) implementation + tests
+- [x] GDPR delete endpoint + tests (design & examples)
+- [x] Retention Runner (binary) + Dockerfile + build workflow
+- [x] CI: `audit-retention.yml` + `audit-runner-build.yml`
+- [x] Ops Playbook, Monitoring & Alerts
+- [x] Documentation: TEIL 8 ergänzt (Runbook, API Samples)
+
+---
+
+
 ## 📊 TEIL 7 - STATUS REPORT
 
 ```yaml
@@ -7129,6 +7446,9 @@ Completed:
      - Expiry validation
      - Feature checking
      - Tamper detection
+  ✅ Licensing infra
+     - `License` entity with tier, features and expiry
+     - `LicensingStore` (storage-backed) with feature checks and unit tests
   ✅ License generator (server-side)
      - Ed25519 signing
      - Base64 encoding
@@ -7138,11 +7458,19 @@ Completed:
      - Role hierarchy (User/Moderator/Admin)
      - Permission checker
      - Multi-permission checks
+     - **Policy expression language** (`role:`, `any(...)`, `all(...)`, `not(...)`) implemented
+     - **Policy license checks**: `license:<feature>` expression supported and integrable with `LicensingStore`
   ✅ Authorization service
      - Permission checking
      - Feature gating
      - Resource access control
-  ✅ Comprehensive tests (5/5 passing)
+  ✅ Unit & integration tests added and passing locally
+  ✅ AuthStore conveniences: `evaluate_for_user` and `evaluate_with_licensing_store` added
+  ✅ CI: Added `authorization-licensing-integration.yml` GitHub Actions workflow to run authz/licensing tests in CI
+
+Notes:
+  ⚠️ Submodul-Patch: Ein benötigter Patch für das Dependency `rcgen` konnte nicht direkt ins Upstream-Repo `est31/rcgen` gepusht werden (403 - Permission denied).
+  Ich habe den Patch in meinen Fork `https://github.com/asMODhias/rcgen` gepusht und die Submodul-Referenz in diesem Repository auf den Fork aktualisiert, damit CI und lokale Builds die gepatchte Version verwenden können. Wir belassen die Referenz auf den Fork, bis ein Upstream-PR angenommen wird oder eine alternative Lösung vereinbart ist.
 
 Quality Metrics:
   Code Coverage: 90%

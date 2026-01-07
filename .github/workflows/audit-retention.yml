@@ -1,0 +1,38 @@
+name: Audit - Retention & Compliance
+
+on:
+  push:
+    branches: [ main, feat/authorization/store ]
+  pull_request:
+    paths:
+      - 'crates/infrastructure/audit/**'
+      - '.github/workflows/audit-retention.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Install dependencies
+        run: cargo fetch
+
+      - name: Run audit tests
+        run: cargo test -p verseguy_audit_infra --tests
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-tests-logs
+          path: target/debug
