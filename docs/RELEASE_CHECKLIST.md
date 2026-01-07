@@ -4,10 +4,10 @@
 
 ## Pre-Release
 
-- [ ] All tests passing
+- [x] All tests passing
 - [ ] Code coverage > 80%
-- [ ] Documentation updated
-- [ ] CHANGELOG.md updated
+- [x] Documentation updated
+- [x] CHANGELOG.md updated
 - [ ] Version numbers updated
 - [ ] No TODO/FIXME in code
 
