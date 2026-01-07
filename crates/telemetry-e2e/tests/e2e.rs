@@ -50,7 +50,7 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
                     "telemetry-e2e",
                 )])),
             )
-            .install_batch(opentelemetry_sdk::runtime::Tokio)?
+            .install_simple()?
     } else {
         if debug {
             eprintln!("Using OTLP gRPC exporter -> {}", otlp_endpoint);
@@ -68,7 +68,7 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
                     "telemetry-e2e",
                 )])),
             )
-            .install_batch(opentelemetry_sdk::runtime::Tokio)?
+            .install_simple()?
     };
     let tracer = global::tracer("telemetry-e2e");
 
