@@ -65,6 +65,33 @@ jobs:
           name: coverage-xml
           path: ./tarpaulin-report.xml
 
+      - name: Check coverage threshold (fail if < 70%)
+        if: always()
+        run: |
+          if [ ! -f ./tarpaulin-report.xml ]; then echo "Coverage report not found, skipping threshold check"; exit 0; fi
+          python - <<'PY'
+import xml.etree.ElementTree as ET
+root = ET.parse('tarpaulin-report.xml').getroot()
+# Cobertura-like: check line-rate attribute if present
+rate = None
+if 'line-rate' in root.attrib:
+    rate = float(root.attrib['line-rate'])
+else:
+    # fallback: try to find coverage percent in packages or sources
+    for elem in root.iter():
+        if 'line-rate' in elem.attrib:
+            rate = float(elem.attrib['line-rate'])
+            break
+if rate is None:
+    print('Could not detect coverage rate, skipping')
+    raise SystemExit(0)
+pct = rate * 100
+print(f'Coverage: {pct:.2f}%')
+if pct < 70.0:
+    print('Coverage below threshold (70%), failing job')
+    raise SystemExit(2)
+PY
+
   windows-build:
     name: Windows Build (C++ Core + WinUI + Rust)
     runs-on: windows-latest
