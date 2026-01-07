@@ -60,7 +60,8 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
             .with_exporter(
                 opentelemetry_otlp::new_exporter()
                     .tonic()
-                    .with_endpoint(otlp_endpoint.clone()),
+                    .with_endpoint(otlp_endpoint.clone())
+                    .with_tls(false),
             )
             .with_trace_config(
                 sdktrace::Config::default().with_resource(Resource::new(vec![KeyValue::new(
