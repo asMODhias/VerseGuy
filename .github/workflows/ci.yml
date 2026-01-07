@@ -52,6 +52,19 @@ jobs:
       - name: Run cargo tests
         run: cargo test --workspace --all-features --verbose
 
+      - name: Run coverage (cargo-tarpaulin) and upload results
+        run: |
+          cargo install cargo-tarpaulin --version 0.25.0 || true
+          cargo tarpaulin --out Xml --all -- -q || true
+        continue-on-error: true
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: ./tarpaulin-report.xml
+
   windows-build:
     name: Windows Build (C++ Core + WinUI + Rust)
     runs-on: windows-latest
