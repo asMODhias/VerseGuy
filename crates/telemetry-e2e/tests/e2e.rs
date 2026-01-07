@@ -47,7 +47,8 @@ async fn otlp_trace_reaches_jaeger() -> Result<()> {
             .with_exporter(
                 opentelemetry_otlp::new_exporter()
                     .http()
-                    .with_endpoint(format!("{}/v1/traces", otlp_endpoint.trim_end_matches('/'))),
+                    .with_endpoint(format!("{}/v1/traces", otlp_endpoint.trim_end_matches('/')))
+                    .with_http_client(opentelemetry_http::reqwest::ReqwestClient::new(reqwest::Client::new())),
             )
             .with_trace_config(
                 sdktrace::Config::default().with_resource(Resource::new(vec![KeyValue::new(
