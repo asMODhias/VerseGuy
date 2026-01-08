@@ -17,6 +17,8 @@ Gefundene Dateien (Auszug)
 - tests/integration_test.rs (workspace root)    — **Empfehlung: HOCH (convert)**
 - docs/UNWRAP_REVIEW.md                         — enthält Hinweise und Beispielcode
 
+Neu: OAuth Token-Endpunkt implementiert in `crates/api` (Client-Credentials Grant). Tests für `/oauth/token` mit manueller Tokio-Runtime wurden hinzugefügt.
+
 Kriterium für Priorisierung
 - HOCH: Integrationstests oder Tests, die in CI laufen und bei denen ein `Result::expect` (aus Macro-Expansion) Clippy-Fehler auslösen kann.
 - MITTEL: Unit-Tests in lib-Dateien; konvertierbar, aber geringere Priorität.

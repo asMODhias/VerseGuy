@@ -14129,6 +14129,7 @@ Completed:
   ✅ Frontend integration guide
      - TypeScript types
   ✅ Initial API crate scaffolded (`crates/api`) with basic endpoints: `/health`, `/metrics`, `/protected` and automated tests
+  ✅ OAuth token endpoint (`POST /oauth/token`) implemented (client_credentials grant, demo client) with tests
      - API client
      - React examples
 
