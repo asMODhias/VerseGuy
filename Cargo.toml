@@ -86,7 +86,7 @@ ring = "0.17.14"
 # Networking
 libp2p = { version = "0.56.0", features = ["tcp", "quic", "mdns", "kad", "gossipsub", "noise", "yamux"] }
 libp2p-core = "0.43.2"
-libp2p-swarm = "0.47.0"
+libp2p-swarm = "0.48.0"
 libp2p-mdns = "0.48.0"
 libp2p-gossipsub = "0.49.2"
 libp2p-tcp = "0.44.0"
