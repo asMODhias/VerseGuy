@@ -14,7 +14,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 metrics = { workspace = true }
 base64 = "0.21"
-lru = "0.12"
+lru = "0.16"
 anyhow = "1.0"
 rand = "0.8"
 keyring = "1.0"
