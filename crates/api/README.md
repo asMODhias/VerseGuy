@@ -64,6 +64,7 @@ After downloading, replace `static/swagger-ui/swagger-ui-bundle.js` with the dow
 
 - CI: The repository includes a workflow (`.github/workflows/docs-ci.yml`) which optionally fetches the official Swagger UI dist, runs Spectral to lint `crates/api/openapi.yaml` and executes `cargo test -p verseguy-api`. The workflow treats vendored assets as optional (the docs UI still falls back to the local interactive implementation).
 
+- UI: The interactive docs UI now shows an **Auth** panel (fetch client credentials, clear token) and renders parameter forms for endpoints that declare `parameters` or `requestBody` (form fields) in the OpenAPI spec. Use these forms to build requests (query params or form body) and send them directly from the docs page.
 - Note: `swagger-ui-dist` is MIT-licensed; check the upstream license when vendoring assets.
 
 The OpenAPI spec includes OAuth2 securitySchemes for Authorization Code and Client Credentials flows and marks `/protected` as a secured endpoint requiring the `read` scope.

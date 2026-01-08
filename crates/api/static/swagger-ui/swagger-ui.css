@@ -1,6 +1,8 @@
 /* Offline Swagger UI CSS (vendor-ish, minimal but functional) */
 .swagger-ui { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding: 1rem; color: #333; }
 .swagger-ui__header h1 { margin: 0 0 1rem 0; font-size: 1.5rem; }
+.swagger-ui__auth { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+.swagger-ui__auth_status { font-size: 0.9rem; color: #666; }
 .swagger-ui__endpoints { display: block; }
 .swagger-ui__endpoint { padding: 0.5rem 0; border-bottom: 1px solid #eee; }
 .swagger-ui__try { margin-left: 0.5rem; padding: 0.25rem 0.5rem; }
@@ -13,6 +15,10 @@
 .swagger-ui__response__body { background: #f9f9f9; padding: 0.5rem; overflow: auto; }
 .swagger-ui__label { margin-top: 0.5rem; font-weight: bold; }
 .swagger-ui__headers_input, .swagger-ui__body_input { font-family: monospace; font-size: 0.9rem; }
+.swagger-ui__params { margin-top: 0.5rem; }
+.swagger-ui__param_row { margin-bottom: 0.25rem; display: flex; gap: 0.5rem; align-items: center; }
+.swagger-ui__param_input, .swagger-ui__form_input { width: 50%; }
+.swagger-ui__go { margin-top: 0.5rem; }
 .swagger-ui__loading { font-style: italic; color: #666; }
 .swagger-ui__error { color: #b00020; background: #fff0f0; padding: 0.5rem; border: 1px solid #f2c2c2; }
 

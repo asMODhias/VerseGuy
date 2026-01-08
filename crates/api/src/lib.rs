@@ -115,6 +115,12 @@ async fn static_handler(path: axum::extract::Path<String>) -> impl IntoResponse 
             include_str!("../static/swagger-ui/swagger-ui-standalone-preset.min.js"),
         )
             .into_response(),
+        "swagger-ui/oauth-callback.html" => (
+            axum::http::StatusCode::OK,
+            [("content-type", "text/html")],
+            include_str!("../static/swagger-ui/oauth-callback.html"),
+        )
+            .into_response(),
         "swagger-ui/swagger-ui.bundle.css" => (
             axum::http::StatusCode::OK,
             [("content-type", "text/css")],
@@ -142,10 +148,21 @@ async fn metrics_handler() -> impl IntoResponse {
 
 /// Minimal protected endpoint: requires header `x-api-key: secret` (placeholder auth)
 async fn protected_handler(req: axum::http::Request<axum::body::Body>) -> impl IntoResponse {
+    // simple placeholder check: accept either a non-empty x-api-key header or a Bearer token in Authorization
     if let Some(v) = req.headers().get("x-api-key") {
-        // simple placeholder check: accept any non-empty header value
         if !v.as_bytes().is_empty() {
             return (StatusCode::OK, "authorized");
+        }
+    }
+
+    if let Some(h) = req.headers().get("authorization") {
+        if let Ok(s) = h.to_str() {
+            if s.to_ascii_lowercase().starts_with("bearer ") {
+                let token = s[7..].trim();
+                if !token.is_empty() {
+                    return (StatusCode::OK, "authorized");
+                }
+            }
         }
     }
 
