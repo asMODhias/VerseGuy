@@ -57,6 +57,7 @@ impl OrganizationService {
             founded: now,
             owner_id: owner_id.clone(),
             member_count: 1,
+            treasury_balance: 0,
             created_at: now,
             updated_at: now,
         };
@@ -105,6 +106,40 @@ impl OrganizationService {
             .prefix_scan(keys::members_prefix(org_id))
             .context("Failed to scan members")?;
         Ok(results)
+    }
+
+    // -------------------------------------------------------------------------
+    // Treasury management
+    // -------------------------------------------------------------------------
+
+    pub fn deposit(&self, org_id: &str, amount: i64) -> Result<()> {
+        let mut org = self
+            .get_organization(org_id)?
+            .ok_or_else(|| anyhow::anyhow!("not found"))?;
+        org.treasury_balance = org
+            .treasury_balance
+            .checked_add(amount)
+            .ok_or_else(|| anyhow::anyhow!("Treasury overflow"))?;
+        org.updated_at = chrono::Utc::now();
+        self.storage
+            .put(keys::organization(org_id), &org)
+            .context("Failed to update org treasury")?;
+        Ok(())
+    }
+
+    pub fn withdraw(&self, org_id: &str, amount: i64) -> Result<()> {
+        let mut org = self
+            .get_organization(org_id)?
+            .ok_or_else(|| anyhow::anyhow!("not found"))?;
+        if org.treasury_balance < amount {
+            anyhow::bail!("Insufficient funds");
+        }
+        org.treasury_balance -= amount;
+        org.updated_at = chrono::Utc::now();
+        self.storage
+            .put(keys::organization(org_id), &org)
+            .context("Failed to update org treasury")?;
+        Ok(())
     }
 
     pub fn has_permission(&self, user_id: &str, perm: Permission) -> Result<bool> {

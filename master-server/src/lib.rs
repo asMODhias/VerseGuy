@@ -28,7 +28,54 @@ pub fn build_app(state: Arc<AppState>) -> Router {
             "/v1/orgs",
             get(routes::orgs_list_handler).post(routes::orgs_create_handler),
         )
-        .route("/v1/orgs/{id}", get(routes::orgs_get_handler))
+        .route(
+            "/v1/orgs/{id}",
+            get(routes::orgs_get_handler).delete(routes::orgs_delete_handler),
+        )
+        .route("/v1/orgs/{id}/deposit", post(routes::orgs_deposit_handler))
+        .route(
+            "/v1/orgs/{id}/withdraw",
+            post(routes::orgs_withdraw_handler),
+        )
+        .route(
+            "/v1/orgs/{id}/members",
+            post(routes::orgs_add_member_handler),
+        )
+        // Fleet routes
+        .route(
+            "/v1/fleets",
+            get(routes::fleets_list_handler).post(routes::fleets_create_handler),
+        )
+        .route("/v1/fleets/{id}", get(routes::fleets_get_handler))
+        .route(
+            "/v1/fleets/{id}/ships",
+            post(routes::fleets_add_ship_handler),
+        )
+        // Operations routes
+        .route(
+            "/v1/operations",
+            get(routes::operations_list_handler).post(routes::operations_create_handler),
+        )
+        .route("/v1/operations/{id}", get(routes::operations_get_handler))
+        .route(
+            "/v1/operations/{id}/participants",
+            post(routes::operations_add_participant_handler),
+        )
+        .route(
+            "/v1/operations/{id}/status",
+            post(routes::operations_update_status_handler),
+        )
+        // Application routes
+        .route(
+            "/v1/apps",
+            get(routes::apps_list_handler).post(routes::apps_create_handler),
+        )
+        .route(
+            "/v1/apps/{id}",
+            get(routes::apps_get_handler)
+                .patch(routes::apps_update_handler)
+                .delete(routes::apps_delete_handler),
+        )
         .route("/admin/keys", get(routes::admin_get_keys))
         .route("/admin/keys/rotate", post(routes::admin_rotate_key))
         .route("/admin/keys/import", post(routes::admin_import_key))

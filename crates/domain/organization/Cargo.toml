@@ -1,0 +1,19 @@
+[package]
+name = "verseguy-domain-organization"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+verseguy_shared_error = { path = "../../shared/error" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }
+chrono = { workspace = true, features = ["serde"] }
+thiserror = { workspace = true }
+anyhow = "1.0"
+async-trait = { workspace = true }
+verseguy_storage_infra = { path = "../../infrastructure/storage" }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util", "macros"] }
+tempfile = { workspace = true }

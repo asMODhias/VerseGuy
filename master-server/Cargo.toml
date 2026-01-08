@@ -29,6 +29,11 @@ plugins-base-organization = { path = "../plugins/base/organization" }
 verseguy_compliance = { path = "../containers/compliance" }
 verseguy_audit = { path = "../containers/audit" }
 verseguy_authorization = { path = "../crates/infrastructure/authorization" }
+"verseguy-domain-organization" = { path = "../crates/domain/organization" }
+verseguy-domain-fleet = { path = "../crates/domain/fleet" }
+verseguy-domain-operations = { path = "../crates/domain/operations" }
+verseguy-domain-application = { path = "../crates/domain/application" }
+verseguy_storage_infra = { path = "../crates/infrastructure/storage" }
 sha2 = "0.10"
 hyper = { version = "0.14", features = ["server"] }
 

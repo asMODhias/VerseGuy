@@ -10,7 +10,11 @@ fn retention_runner_dry_run_detects_old_events() -> verseguy_storage_infra::prel
     // Setup DB with one old event
     let td = TempDir::new()?;
     let db_path = td.path().join("audit_runner_db");
-    let cfg = StorageConfig { path: db_path.clone(), encryption_enabled: false, ..Default::default() };
+    let cfg = StorageConfig {
+        path: db_path.clone(),
+        encryption_enabled: false,
+        ..Default::default()
+    };
     let engine = std::sync::Arc::new(StorageEngine::open(cfg)?);
     let store = AuditStore::new(engine.clone());
 
@@ -31,9 +35,14 @@ fn retention_runner_dry_run_detects_old_events() -> verseguy_storage_infra::prel
 
     // Build the retention_runner binary (ensures target exists)
     let build_status = Command::new("cargo")
-        .args(["build", "-p", "verseguy_audit_infra", "--bin", "retention_runner"])
-        .status()
-        .expect("failed to run cargo build");
+        .args([
+            "build",
+            "-p",
+            "verseguy_audit_infra",
+            "--bin",
+            "retention_runner",
+        ])
+        .status()?;
     assert!(build_status.success());
 
     // Execute the binary with --dry-run
@@ -48,22 +57,27 @@ fn retention_runner_dry_run_detects_old_events() -> verseguy_storage_infra::prel
             "retention_runner",
             "--",
             "--db-path",
-            db_path.to_str().unwrap(),
+            db_path.to_str().ok_or_else(|| {
+                verseguy_storage_infra::prelude::internal_err("tempdir path not utf8")
+            })?,
             "--days",
             "1",
             "--dry-run",
         ])
-        .output()
-        .expect("failed to execute cargo run for retention_runner");
+        .output()?;
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
-    let stdout = std::str::from_utf8(&output.stdout).unwrap_or_default();
-
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = str::from_utf8(&output.stdout).unwrap_or_default();
 
     // Expect message indicating it would delete 1 event
-    assert!(stdout.contains("Dry-run: would delete 1 events") || stdout.contains("would delete 1 events"));
+    assert!(
+        stdout.contains("Dry-run: would delete 1 events")
+            || stdout.contains("would delete 1 events")
+    );
 
     Ok(())
 }
