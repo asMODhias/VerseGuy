@@ -8,14 +8,21 @@ use axum::{
 use serde::Serialize;
 use uuid::Uuid;
 
-/// Build a minimal API router with basic endpoints.
+/// Build a minimal API router with basic endpoints using the default global store.
 pub fn build_app() -> Router {
+    build_app_with_store(TOKEN_STORE.clone())
+}
+
+/// Build a router that uses the provided TokenStore (useful for tests and injected backends)
+pub fn build_app_with_store(store: std::sync::Arc<dyn store::TokenStore>) -> Router {
+    use axum::Extension;
     Router::new()
         .route("/health", get(health_handler))
         .route("/metrics", get(metrics_handler))
         .route("/protected", get(protected_handler))
         .route("/oauth/token", post(token_handler))
         .route("/oauth/authorize", get(authorize_handler))
+        .layer(Extension(store))
 }
 
 async fn health_handler() -> impl IntoResponse {
@@ -123,6 +130,7 @@ async fn authorize_handler(req: axum::http::Request<axum::body::Body>) -> impl I
 }
 
 async fn token_handler(
+    axum::Extension(store): axum::Extension<std::sync::Arc<dyn crate::store::TokenStore>>,
     req: axum::http::Request<axum::body::Body>,
 ) -> Result<Json<TokenResponse>, (StatusCode, &'static str)> {
     // Read body and parse urlencoded form
@@ -140,7 +148,7 @@ async fn token_handler(
     // Handle refresh_token grant
     if grant == "refresh_token" {
         if let Some(rtok) = params.get("refresh_token") {
-            match TOKEN_STORE.get(rtok) {
+            match store.get(rtok) {
                 Ok(Some(rec)) => {
                     // check expiry
                     if rec.expires_at < Utc::now() {
@@ -153,7 +161,7 @@ async fn token_handler(
                         refresh_token: rec.refresh_token.clone(),
                         expires_at: Utc::now() + chrono::Duration::seconds(3600),
                     };
-                    if TOKEN_STORE.insert(rtok.to_string(), new_rec).is_err() {
+                    if store.insert(rtok.to_string(), new_rec).is_err() {
                         return Err((StatusCode::INTERNAL_SERVER_ERROR, "store_error"));
                     }
 
@@ -176,11 +184,11 @@ async fn token_handler(
     // Authorization Code grant
     if grant == "authorization_code" {
         if let Some(code) = params.get("code") {
-            let mut store = match CODE_STORE.lock() {
+            let mut code_store = match CODE_STORE.lock() {
                 Ok(s) => s,
                 Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "lock_error")),
             };
-            if let Some(crec) = store.remove(code) {
+            if let Some(crec) = code_store.remove(code) {
                 // check expiry
                 if crec.expires_at < Utc::now() {
                     return Err((StatusCode::UNAUTHORIZED, "expired_code"));
@@ -202,7 +210,7 @@ async fn token_handler(
                     refresh_token: refresh_token.clone(),
                     expires_at,
                 };
-                if TOKEN_STORE.insert(refresh_token.clone(), trec).is_err() {
+                if store.insert(refresh_token.clone(), trec).is_err() {
                     return Err((StatusCode::INTERNAL_SERVER_ERROR, "store_error"));
                 }
                 let resp = TokenResponse {
