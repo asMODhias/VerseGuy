@@ -1,0 +1,12 @@
+[package]
+name = "lru"
+version = "0.12.5"
+edition = "2021"
+description = "Compatibility shim: re-export lru v0.16 as lru v0.12.5 to satisfy older deps"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# Pull actual lru v0.16 from crates.io but rename the dependency locally to avoid name collision
+lru_real = { package = "lru", version = "0.16" }
