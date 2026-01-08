@@ -712,6 +712,64 @@ pub async fn apps_delete_handler(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
     Ok(Json(serde_json::json!({"deleted": true})))
 }
+
+#[derive(Deserialize)]
+pub struct BulkCreateAppItem {
+    pub id: Option<String>,
+    pub name: String,
+}
+
+#[derive(Deserialize)]
+pub struct BulkCreateAppsRequest {
+    pub apps: Vec<BulkCreateAppItem>,
+}
+
+#[derive(Deserialize)]
+pub struct BulkDeleteRequest {
+    pub ids: Vec<String>,
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn apps_bulk_create_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<BulkCreateAppsRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_application::repo::storage_adapter::StorageApplicationRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_application::service::ApplicationService::new(repo);
+
+    let mut created = Vec::new();
+    for item in req.apps.into_iter() {
+        let id = item.id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+        let a = svc
+            .create(id.clone(), item.name)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+        created.push(a);
+    }
+
+    Ok(Json(serde_json::json!({"apps": created})))
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn apps_bulk_delete_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<BulkDeleteRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_application::repo::storage_adapter::StorageApplicationRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_application::service::ApplicationService::new(repo);
+    svc.bulk_delete(req.ids)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"deleted": true})))
+}
 #[allow(clippy::disallowed_methods)]
 pub async fn fleets_get_handler(
     State(state): State<Arc<AppState>>,

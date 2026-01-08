@@ -71,6 +71,10 @@ pub fn build_app(state: Arc<AppState>) -> Router {
             get(routes::apps_list_handler).post(routes::apps_create_handler),
         )
         .route(
+            "/v1/apps/bulk",
+            post(routes::apps_bulk_create_handler).delete(routes::apps_bulk_delete_handler),
+        )
+        .route(
             "/v1/apps/{id}",
             get(routes::apps_get_handler)
                 .patch(routes::apps_update_handler)

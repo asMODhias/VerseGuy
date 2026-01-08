@@ -45,6 +45,20 @@ impl ApplicationRepository for StorageApplicationRepository {
         self.storage.delete(Self::key(id))?;
         Ok(())
     }
+
+    async fn bulk_create(&self, apps: &[AppAggregate]) -> anyhow::Result<()> {
+        for a in apps {
+            self.storage.put(Self::key(&a.id), a)?;
+        }
+        Ok(())
+    }
+
+    async fn bulk_delete(&self, ids: &[String]) -> anyhow::Result<()> {
+        for id in ids {
+            self.storage.delete(Self::key(id))?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]

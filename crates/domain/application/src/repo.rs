@@ -10,6 +10,12 @@ pub trait ApplicationRepository: Send + Sync {
     async fn list(&self, prefix: &str) -> anyhow::Result<Vec<AppAggregate>>;
     async fn update(&self, a: &AppAggregate) -> anyhow::Result<()>;
     async fn delete(&self, id: &str) -> anyhow::Result<()>;
+
+    /// Bulk create multiple apps. Fails if any item cannot be stored.
+    async fn bulk_create(&self, apps: &[AppAggregate]) -> anyhow::Result<()>;
+
+    /// Bulk delete by ids. Fails if any delete fails.
+    async fn bulk_delete(&self, ids: &[String]) -> anyhow::Result<()>;
 }
 
 #[cfg(test)]

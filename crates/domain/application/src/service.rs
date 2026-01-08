@@ -94,6 +94,24 @@ impl<R: ApplicationRepository> ApplicationService<R> {
         self.repo.delete(id).await?;
         Ok(())
     }
+
+    pub async fn bulk_create(
+        &self,
+        items: Vec<(String, String)>,
+    ) -> anyhow::Result<Vec<AppAggregate>> {
+        let mut created = Vec::new();
+        for (id, name) in items.into_iter() {
+            let a = AppAggregate::new(id, name);
+            self.repo.create(&a).await?;
+            created.push(a);
+        }
+        Ok(created)
+    }
+
+    pub async fn bulk_delete(&self, ids: Vec<String>) -> anyhow::Result<()> {
+        self.repo.bulk_delete(&ids).await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

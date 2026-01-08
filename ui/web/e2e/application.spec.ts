@@ -45,6 +45,17 @@ test.describe('Application E2E', () => {
     expect(gJson3.metadata?.env).toBe('staging');
     expect(gJson3.tags).toEqual(expect.arrayContaining(['beta']));
 
+    // Bulk create
+    const bulkRes = await request.post(`${apiUrl}/v1/apps/bulk`, { data: { apps: [{ name: 'Bulk-E1' }, { name: 'Bulk-E2' }] } });
+    expect(bulkRes.ok()).toBeTruthy();
+    const bulkJson = await bulkRes.json();
+    expect(bulkJson.apps.length).toBeGreaterThanOrEqual(2);
+
+    // Bulk delete
+    const bulkIds = bulkJson.apps.map((a: any) => a.id);
+    const delRes = await request.delete(`${apiUrl}/v1/apps/bulk`, { data: { ids: bulkIds } });
+    expect(delRes.ok()).toBeTruthy();
+
     // Delete
     const delRes = await request.delete(`${apiUrl}/v1/apps/${id}`);
     expect(delRes.ok()).toBeTruthy();

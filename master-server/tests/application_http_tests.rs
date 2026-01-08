@@ -99,21 +99,52 @@ async fn create_and_get_app() {
     let tags = fetched2.get("tags").and_then(|t| t.as_array()).unwrap();
     assert!(tags.iter().any(|v| v.as_str().unwrap_or("") == "beta"));
 
-    // Delete
-    let req5 = must(
+    // Bulk create apps
+    let bulk_body = r#"{"apps":[{"name":"Bulk1"},{"name":"Bulk2"}]}"#.to_string();
+    let req_bulk = must(
+        Request::builder()
+            .method("POST")
+            .uri("/v1/apps/bulk")
+            .header("content-type", "application/json")
+            .body(Body::from(bulk_body)),
+    );
+    let resp_bulk = must(app.clone().oneshot(req_bulk).await);
+    assert_eq!(resp_bulk.status(), StatusCode::OK);
+    let bytesb = must(body::to_bytes(resp_bulk.into_body(), 1024 * 1024).await);
+    let created: serde_json::Value = must(serde_json::from_slice(&bytesb));
+    let apps = must_opt(
+        created.get("apps").and_then(|v| v.as_array()),
+        "missing apps",
+    );
+    assert!(apps.len() >= 2);
+
+    // Collect ids and bulk delete
+    let ids: Vec<String> = apps
+        .iter()
+        .map(|a| {
+            a.get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string()
+        })
+        .collect();
+    let del_body = serde_json::json!({"ids": ids}).to_string();
+    let req_del_bulk = must(
         Request::builder()
             .method("DELETE")
-            .uri(uri_upd.clone())
-            .body(Body::empty()),
+            .uri("/v1/apps/bulk")
+            .header("content-type", "application/json")
+            .body(Body::from(del_body)),
     );
-    let resp5 = must(app.clone().oneshot(req5).await);
-    assert_eq!(resp5.status(), StatusCode::OK);
+    let resp_del_bulk = must(app.clone().oneshot(req_del_bulk).await);
+    assert_eq!(resp_del_bulk.status(), StatusCode::OK);
 
-    // Fetch should now return null
+    // Fetch should now return null for first bulk id
+    let uri_first = format!("/v1/apps/{}", ids[0]);
     let req6 = must(
         Request::builder()
             .method("GET")
-            .uri(uri_upd.clone())
+            .uri(uri_first.clone())
             .body(Body::empty()),
     );
     let resp6 = must(app.clone().oneshot(req6).await);
