@@ -83,7 +83,9 @@ fn openapi_contains_token_response_schema_and_examples() {
             Some(r) => r,
             None => panic!("200 response missing"),
         };
-        let appjson_opt = resp200.get("content").and_then(|c| c.get("application/json"));
+        let appjson_opt = resp200
+            .get("content")
+            .and_then(|c| c.get("application/json"));
         let appjson = match appjson_opt {
             Some(a) => a,
             None => panic!("application/json content missing"),

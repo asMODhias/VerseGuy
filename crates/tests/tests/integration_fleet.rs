@@ -1,5 +1,5 @@
-use verseguy_tests::utils::*;
 use verseguy_application::{ApplicationService, CreateFleetDto};
+use verseguy_tests::utils::*;
 
 struct TestContext {
     _temp_dir: tempfile::TempDir,

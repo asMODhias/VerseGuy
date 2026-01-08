@@ -1,6 +1,6 @@
-use verseguy_tests::utils::*;
+use chrono::{Duration, Utc};
 use verseguy_application::{ApplicationService, CreateOperationDto};
-use chrono::{Utc, Duration};
+use verseguy_tests::utils::*;
 
 struct TestContext {
     _temp_dir: tempfile::TempDir,

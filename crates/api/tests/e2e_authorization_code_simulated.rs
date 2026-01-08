@@ -1,6 +1,6 @@
 use axum::body::Body;
-use tower::util::ServiceExt;
 use std::collections::HashMap;
+use tower::util::ServiceExt;
 
 #[test]
 fn e2e_authorization_code_simulated_flow() {

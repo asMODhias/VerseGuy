@@ -1,5 +1,5 @@
-use verseguy_tests::utils::*;
 use verseguy_application::{ApplicationService, CreateOrganizationDto};
+use verseguy_tests::utils::*;
 
 struct TestContext {
     _temp_dir: tempfile::TempDir,
@@ -30,7 +30,9 @@ fn test_create_organization() {
         description: "A test organization".to_string(),
     };
 
-    let result = ctx.app_service.create_organization(dto, ctx.user_id.clone());
+    let result = ctx
+        .app_service
+        .create_organization(dto, ctx.user_id.clone());
     assert!(result.is_ok());
     let org = result.unwrap();
     assert_eq!(org.name, "Test Organization");
