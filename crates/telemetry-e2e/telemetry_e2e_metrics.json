@@ -1,8 +1,8 @@
 {
-  "attempts": 1,
-  "duration_ms": 13,
+  "attempts": 2,
+  "duration_ms": 926,
   "found": true,
-  "last_body": null,
-  "test_id": "833badcf-7f42-4273-a6ae-8c03575b8c29",
-  "timestamp_unix": 1767828730
+  "last_body": "{\"data\":null,\"total\":0,\"limit\":0,\"offset\":0,\"errors\":[{\"code\":400,\"msg\":\"parameter 'service' is required\"}]}\n",
+  "test_id": "29f36f78-5355-4d2c-8ed3-f7cf783b3bdd",
+  "timestamp_unix": 1767831999
 }
