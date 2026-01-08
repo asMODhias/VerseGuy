@@ -1,0 +1,46 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  bench:
+    name: Run Criterion benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run benchmarks (release)
+        env:
+          RUSTFLAGS: -C target-cpu=native
+        run: |
+          cargo bench -p verseguy-application --bench domain_benchmarks --release --color=always || true
+
+      - name: Upload Criterion results
+        uses: actions/upload-artifact@v4
+        with:
+          name: criterion-results
+          path: target/criterion
+          if-no-files-found: ignore

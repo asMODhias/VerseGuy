@@ -28,6 +28,8 @@ members = [
     "crates/infrastructure/audit",
     "crates/migrations",
     "crates/api",
+    "crates/application",
+    "crates/tests",
 ]
 
 [workspace.package]
@@ -63,6 +65,9 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 
 # Database
 rocksdb = "0.21"
+
+# Benchmarking
+criterion = "0.4"
 
 # Metrics
 metrics = "0.21"
