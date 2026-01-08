@@ -35,6 +35,61 @@ impl<R: ApplicationRepository> ApplicationService<R> {
         Ok(())
     }
 
+    pub async fn set_metadata(&self, id: &str, key: String, value: String) -> anyhow::Result<()> {
+        let mut a = self
+            .repo
+            .get_by_id(id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("not found"))?;
+        a.set_metadata(key, value);
+        self.repo.update(&a).await?;
+        Ok(())
+    }
+
+    pub async fn remove_metadata(&self, id: &str, key: &str) -> anyhow::Result<()> {
+        let mut a = self
+            .repo
+            .get_by_id(id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("not found"))?;
+        a.remove_metadata(key);
+        self.repo.update(&a).await?;
+        Ok(())
+    }
+
+    pub async fn add_tag(&self, id: &str, tag: String) -> anyhow::Result<()> {
+        let mut a = self
+            .repo
+            .get_by_id(id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("not found"))?;
+        a.add_tag(tag);
+        self.repo.update(&a).await?;
+        Ok(())
+    }
+
+    pub async fn remove_tag(&self, id: &str, tag: &str) -> anyhow::Result<()> {
+        let mut a = self
+            .repo
+            .get_by_id(id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("not found"))?;
+        a.remove_tag(tag);
+        self.repo.update(&a).await?;
+        Ok(())
+    }
+
+    pub async fn set_tags(&self, id: &str, tags: Vec<String>) -> anyhow::Result<()> {
+        let mut a = self
+            .repo
+            .get_by_id(id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("not found"))?;
+        a.tags = tags;
+        self.repo.update(&a).await?;
+        Ok(())
+    }
+
     pub async fn delete(&self, id: &str) -> anyhow::Result<()> {
         self.repo.delete(id).await?;
         Ok(())
@@ -59,6 +114,13 @@ mod tests {
         let a = svc.create("a-x".into(), "AX".into()).await?;
         let got = svc.get(&a.id).await?.expect("exists");
         assert_eq!(got.name, "AX");
+
+        // Metadata and tags
+        svc.set_metadata(&a.id, "env".into(), "prod".into()).await?;
+        svc.add_tag(&a.id, "beta".into()).await?;
+        let got2 = svc.get(&a.id).await?.expect("exists");
+        assert_eq!(got2.metadata.get("env").map(|s| s.as_str()), Some("prod"));
+        assert!(got2.tags.contains(&"beta".to_string()));
         Ok(())
     }
 }

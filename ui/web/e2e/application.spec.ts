@@ -30,12 +30,20 @@ test.describe('Application E2E', () => {
     const gJson = await gRes.json();
     expect(gJson.name).toBe('App-E2E');
 
-    // Update
+    // Update name
     const updRes = await request.patch(`${apiUrl}/v1/apps/${id}`, { data: { name: 'App-E2E-Updated' } });
     expect(updRes.ok()).toBeTruthy();
     const gRes2 = await request.get(`${apiUrl}/v1/apps/${id}`);
     const gJson2 = await gRes2.json();
     expect(gJson2.name).toBe('App-E2E-Updated');
+
+    // Add metadata and tags
+    const metaRes = await request.patch(`${apiUrl}/v1/apps/${id}`, { data: { metadata: { env: 'staging', owner: 'team-a' }, tags: ['beta','internal'] } });
+    expect(metaRes.ok()).toBeTruthy();
+    const gRes3 = await request.get(`${apiUrl}/v1/apps/${id}`);
+    const gJson3 = await gRes3.json();
+    expect(gJson3.metadata?.env).toBe('staging');
+    expect(gJson3.tags).toEqual(expect.arrayContaining(['beta']));
 
     // Delete
     const delRes = await request.delete(`${apiUrl}/v1/apps/${id}`);

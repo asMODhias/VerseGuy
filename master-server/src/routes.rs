@@ -659,7 +659,9 @@ pub async fn apps_get_handler(
 
 #[derive(Deserialize)]
 pub struct UpdateAppRequest {
-    pub name: String,
+    pub name: Option<String>,
+    pub metadata: Option<std::collections::HashMap<String, String>>,
+    pub tags: Option<Vec<String>>,
 }
 
 #[allow(clippy::disallowed_methods)]
@@ -674,9 +676,23 @@ pub async fn apps_update_handler(
         ),
     );
     let svc = verseguy_domain_application::service::ApplicationService::new(repo);
-    svc.update_name(&id, req.name)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    if let Some(name) = req.name {
+        svc.update_name(&id, name)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    }
+    if let Some(metadata) = req.metadata {
+        for (k, v) in metadata.into_iter() {
+            svc.set_metadata(&id, k, v)
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+        }
+    }
+    if let Some(tags) = req.tags {
+        svc.set_tags(&id, tags)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    }
     Ok(Json(serde_json::json!({"ok": true})))
 }
 

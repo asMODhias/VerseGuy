@@ -59,6 +59,19 @@ async fn create_and_get_app() {
     let resp3 = must(app.clone().oneshot(req3).await);
     assert_eq!(resp3.status(), StatusCode::OK);
 
+    // Add metadata and tags via PATCH
+    let meta_body =
+        r#"{"metadata":{"env":"staging","owner":"team-a"},"tags":["beta","internal"]}"#.to_string();
+    let req_meta = must(
+        Request::builder()
+            .method("PATCH")
+            .uri(uri_upd.clone())
+            .header("content-type", "application/json")
+            .body(Body::from(meta_body)),
+    );
+    let resp_meta = must(app.clone().oneshot(req_meta).await);
+    assert_eq!(resp_meta.status(), StatusCode::OK);
+
     // Fetch and verify update
     let req4 = must(
         Request::builder()
@@ -73,6 +86,18 @@ async fn create_and_get_app() {
         fetched2.get("name").and_then(|v| v.as_str()).unwrap_or(""),
         "App-E2E-Updated"
     );
+    // verify metadata
+    assert_eq!(
+        fetched2
+            .get("metadata")
+            .and_then(|m| m.get("env"))
+            .and_then(|v| v.as_str())
+            .unwrap_or(""),
+        "staging"
+    );
+    // verify tags
+    let tags = fetched2.get("tags").and_then(|t| t.as_array()).unwrap();
+    assert!(tags.iter().any(|v| v.as_str().unwrap_or("") == "beta"));
 
     // Delete
     let req5 = must(
