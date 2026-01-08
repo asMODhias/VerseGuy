@@ -68,4 +68,18 @@ After downloading, replace `static/swagger-ui/swagger-ui-bundle.js` with the dow
 
 The OpenAPI spec includes OAuth2 securitySchemes for Authorization Code and Client Credentials flows and marks `/protected` as a secured endpoint requiring the `read` scope.
 
+### Try the Authorization Code demo locally
+
+You can exercise the Authorization Code flow with the local docs UI. The crate includes a demo client (`client_id: demo`, `client_secret: secret`) and an interactive helper that automates the flow:
+
+- Open `http://localhost:3000/docs` in your browser.
+- Open the browser console and run:
+
+```js
+// Opens a popup, performs the auth code redirect to the callback page, exchanges the code, and sets the Authorization header
+window.performAuthorizationCodeFlow({ clientId: 'demo', clientSecret: 'secret' }).then(console.log).catch(console.error);
+```
+
+- After success the interactive UI will use the returned access token for Try-it requests (Authorization: Bearer <token>), and you can call the protected endpoint `/protected`.
+
 You can view the API documentation locally by running the service and navigating to `http://localhost:3000/docs`.
