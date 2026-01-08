@@ -15,7 +15,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
+
+      - name: Ensure local rcgen patch (if missing)
+        run: |
+          if [ ! -f patches/rcgen/rcgen/Cargo.toml ]; then
+            echo "patches/rcgen/rcgen not found. Cloning rcgen into patches/rcgen/rcgen..."
+            mkdir -p patches/rcgen
+            git clone https://github.com/est31/rcgen patches/rcgen/rcgen
+          else
+            echo "patches/rcgen/rcgen already present"
+          fi
 
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
