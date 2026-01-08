@@ -30,6 +30,7 @@ fn canonical_manifest_bytes(manifest: &PluginManifest) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
+#[allow(clippy::disallowed_methods)]
 pub fn store_manifest(
     storage: &RocksDBStorage,
     manifest: &PluginManifest,

@@ -6,11 +6,16 @@ use axum::http::{Method, Request, Response, StatusCode};
 use tempfile::TempDir;
 use verseguy_test_utils::{must, must_opt};
 
-// Narrow allow: this test exercises request handling which invokes code (in dependencies/handlers) that currently uses `Result::expect`.
-// The issue is tracked; see follow-up to remove or refactor the offending expect usage upstream.
-#[allow(clippy::disallowed_methods)]
-#[tokio::test]
-async fn publish_requires_plugin_token_when_set() {
+// This test previously used `#[tokio::test]` which expands to code calling `Runtime::build().expect(...)`.
+// Avoid `std::result::Result::expect` in macro expansions by constructing the runtime manually.
+#[test]
+fn publish_requires_plugin_token_when_set() {
+    let rt = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+        Ok(rt) => rt,
+        Err(e) => panic!("failed to build runtime: {}", e),
+    };
+
+    rt.block_on(async {
     // set env var
     std::env::set_var("MASTER_PLUGIN_PUBLISH_KEY", "secrettoken123");
 
@@ -66,4 +71,5 @@ async fn publish_requires_plugin_token_when_set() {
         Err(e) => panic!("unexpected error: {}", e),
     };
     assert_eq!(resp.status(), StatusCode::CREATED); */
+    });
 }
