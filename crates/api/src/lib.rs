@@ -41,9 +41,7 @@ async fn protected_handler(req: axum::http::Request<axum::body::Body>) -> impl I
 
 use chrono::{DateTime, Utc};
 /// OAuth2 token endpoint (initial: client_credentials grant)
-use once_cell::sync::Lazy;
 use std::collections::HashMap;
-use std::sync::Mutex;
 
 #[derive(Serialize)]
 struct TokenResponse {
@@ -54,14 +52,10 @@ struct TokenResponse {
     scope: Option<String>,
 }
 
-struct TokenRecord {
-    access_token: String,
-    refresh_token: String,
-    expires_at: DateTime<Utc>,
-}
-
-static TOKEN_STORE: Lazy<Mutex<HashMap<String, TokenRecord>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+mod store;
+use crate::store::{TokenRecord, TOKEN_STORE};
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
 struct CodeRecord {
     client_id: String,
@@ -146,28 +140,34 @@ async fn token_handler(
     // Handle refresh_token grant
     if grant == "refresh_token" {
         if let Some(rtok) = params.get("refresh_token") {
-            let mut store = match TOKEN_STORE.lock() {
-                Ok(s) => s,
-                Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "lock_error")),
-            };
-            if let Some(rec) = store.get_mut(rtok) {
-                // check expiry
-                if rec.expires_at < Utc::now() {
-                    return Err((StatusCode::UNAUTHORIZED, "expired_refresh_token"));
+            match TOKEN_STORE.get(rtok) {
+                Ok(Some(rec)) => {
+                    // check expiry
+                    if rec.expires_at < Utc::now() {
+                        return Err((StatusCode::UNAUTHORIZED, "expired_refresh_token"));
+                    }
+
+                    let new_access = Uuid::new_v4().to_string();
+                    let new_rec = TokenRecord {
+                        access_token: new_access.clone(),
+                        refresh_token: rec.refresh_token.clone(),
+                        expires_at: Utc::now() + chrono::Duration::seconds(3600),
+                    };
+                    if TOKEN_STORE.insert(rtok.to_string(), new_rec).is_err() {
+                        return Err((StatusCode::INTERNAL_SERVER_ERROR, "store_error"));
+                    }
+
+                    let resp = TokenResponse {
+                        access_token: new_access,
+                        token_type: "bearer",
+                        expires_in: 3600,
+                        refresh_token: Some(rec.refresh_token.clone()),
+                        scope: None,
+                    };
+                    return Ok(Json(resp));
                 }
-
-                let new_access = Uuid::new_v4().to_string();
-                rec.access_token = new_access.clone();
-                rec.expires_at = Utc::now() + chrono::Duration::seconds(3600);
-
-                let resp = TokenResponse {
-                    access_token: new_access,
-                    token_type: "bearer",
-                    expires_in: 3600,
-                    refresh_token: Some(rec.refresh_token.clone()),
-                    scope: None,
-                };
-                return Ok(Json(resp));
+                Ok(None) => return Err((StatusCode::UNAUTHORIZED, "invalid_refresh_token")),
+                Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "store_error")),
             }
         }
         return Err((StatusCode::UNAUTHORIZED, "invalid_refresh_token"));
@@ -202,11 +202,8 @@ async fn token_handler(
                     refresh_token: refresh_token.clone(),
                     expires_at,
                 };
-                match TOKEN_STORE.lock() {
-                    Ok(mut tstore) => {
-                        tstore.insert(refresh_token.clone(), trec);
-                    }
-                    Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "lock_error")),
+                if TOKEN_STORE.insert(refresh_token.clone(), trec).is_err() {
+                    return Err((StatusCode::INTERNAL_SERVER_ERROR, "store_error"));
                 }
                 let resp = TokenResponse {
                     access_token,
@@ -241,11 +238,8 @@ async fn token_handler(
                 refresh_token: refresh_token.clone(),
                 expires_at,
             };
-            match TOKEN_STORE.lock() {
-                Ok(mut store) => {
-                    store.insert(refresh_token.clone(), rec);
-                }
-                Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, "lock_error")),
+            if TOKEN_STORE.insert(refresh_token.clone(), rec).is_err() {
+                return Err((StatusCode::INTERNAL_SERVER_ERROR, "store_error"));
             }
 
             let resp = TokenResponse {
