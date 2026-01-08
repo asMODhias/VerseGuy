@@ -38,7 +38,11 @@ jobs:
             fi
           done
 
-      - name: Test (cargo test)
-        uses: dtolnay/cargo-chef-action@v0.3
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
         with:
-          run: cargo test -p verseguy-api --locked --color=always
+          toolchain: stable
+          override: true
+
+      - name: Test (cargo test)
+        run: cargo test -p verseguy-api --locked --color=always
