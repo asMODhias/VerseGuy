@@ -14,6 +14,7 @@ once_cell = "1.21"
 serde_urlencoded = "0.7"
 chrono = { workspace = true }
 sled = "0.34"
+redis = "0.24"
 
 [dev-dependencies]
 tower = { version = "0.4", features = ["util"] }

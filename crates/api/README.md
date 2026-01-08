@@ -31,3 +31,15 @@ cargo run -p verseguy-api
 ```
 
 Note: Tests include an integration test which verifies persistence across process restarts using a temporary Sled database.
+
+### Redis backend (optional)
+
+You can also use Redis as a backend for the token store. To use Redis set:
+
+```bash
+export VERSEGUY_API_TOKEN_STORE=redis
+export VERSEGUY_API_TOKEN_STORE_URL=redis://127.0.0.1/
+cargo run -p verseguy-api
+```
+
+If Redis is not available, tests that require Redis will be skipped gracefully.

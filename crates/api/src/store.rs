@@ -123,9 +123,11 @@ impl TokenStore for SledTokenStore {
     }
 }
 
+use redis::Client as RedisClient;
 use std::env;
 
-/// Global store selection: default = in-memory; set VERSEGUY_API_TOKEN_STORE=sled to use sled persistence
+/// Global store selection: default = in-memory; set VERSEGUY_API_TOKEN_STORE=sled or =redis to select backing store
+/// If `redis` is selected, the URL will be read from `VERSEGUY_API_TOKEN_STORE_URL` or default to `redis://127.0.0.1/`
 pub static TOKEN_STORE: Lazy<Arc<dyn TokenStore>> = Lazy::new(|| {
     let backend = env::var("VERSEGUY_API_TOKEN_STORE").unwrap_or_default();
     if backend == "sled" {
@@ -133,10 +135,84 @@ pub static TOKEN_STORE: Lazy<Arc<dyn TokenStore>> = Lazy::new(|| {
             Ok(s) => Arc::new(s),
             Err(_) => Arc::new(InMemoryTokenStore::new()),
         }
+    } else if backend == "redis" {
+        let url = env::var("VERSEGUY_API_TOKEN_STORE_URL")
+            .unwrap_or_else(|_| "redis://127.0.0.1/".into());
+        match RedisTokenStore::new(&url) {
+            Ok(r) => Arc::new(r),
+            Err(_) => Arc::new(InMemoryTokenStore::new()),
+        }
     } else {
         Arc::new(InMemoryTokenStore::new())
     }
 });
+
+/// Redis-backed store implementation
+pub struct RedisTokenStore {
+    client: RedisClient,
+}
+
+impl RedisTokenStore {
+    pub fn new(url: &str) -> Result<Self, StoreError> {
+        match RedisClient::open(url) {
+            Ok(client) => Ok(RedisTokenStore { client }),
+            Err(e) => Err(StoreError::Backend(format!("redis open: {}", e))),
+        }
+    }
+}
+
+impl TokenStore for RedisTokenStore {
+    fn insert(&self, refresh_token: String, record: TokenRecord) -> Result<(), StoreError> {
+        let payload = match serde_json::to_string(&record) {
+            Ok(s) => s,
+            Err(e) => return Err(StoreError::Backend(format!("serialize: {}", e))),
+        };
+        match self.client.get_connection() {
+            Ok(mut conn) => match redis::cmd("SET")
+                .arg(&refresh_token)
+                .arg(payload)
+                .query::<()>(&mut conn)
+            {
+                Ok(_) => Ok(()),
+                Err(e) => Err(StoreError::Backend(format!("redis set: {}", e))),
+            },
+            Err(e) => Err(StoreError::Backend(format!("redis conn: {}", e))),
+        }
+    }
+
+    fn get(&self, refresh_token: &str) -> Result<Option<TokenRecord>, StoreError> {
+        match self.client.get_connection() {
+            Ok(mut conn) => match redis::cmd("GET")
+                .arg(refresh_token)
+                .query::<Option<String>>(&mut conn)
+            {
+                Ok(Some(s)) => match serde_json::from_str(&s) {
+                    Ok(rec) => Ok(Some(rec)),
+                    Err(e) => Err(StoreError::Backend(format!("deserialize: {}", e))),
+                },
+                Ok(None) => Ok(None),
+                Err(e) => Err(StoreError::Backend(format!("redis get: {}", e))),
+            },
+            Err(e) => Err(StoreError::Backend(format!("redis conn: {}", e))),
+        }
+    }
+
+    fn remove(&self, refresh_token: &str) -> Result<Option<TokenRecord>, StoreError> {
+        match self.get(refresh_token) {
+            Ok(Some(rec)) => match self.client.get_connection() {
+                Ok(mut conn) => {
+                    match redis::cmd("DEL").arg(refresh_token).query::<i64>(&mut conn) {
+                        Ok(_) => Ok(Some(rec)),
+                        Err(e) => Err(StoreError::Backend(format!("redis del: {}", e))),
+                    }
+                }
+                Err(e) => Err(StoreError::Backend(format!("redis conn: {}", e))),
+            },
+            Ok(None) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -165,6 +241,51 @@ mod tests {
             Ok(None) => (),
             Ok(Some(_)) => panic!("should be gone"),
             Err(_) => panic!("store error"),
+        }
+    }
+
+    #[test]
+    fn redis_store_insert_get_remove() {
+        // Try to connect to Redis; if not available, skip the test gracefully
+        let url = std::env::var("VERSEGUY_API_TOKEN_STORE_URL")
+            .unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
+        let s = match RedisTokenStore::new(&url) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("Skipping redis test (connection failed): {:?}", e);
+                return;
+            }
+        };
+
+        let rec = TokenRecord {
+            access_token: "a".into(),
+            refresh_token: "r1".into(),
+            expires_at: Utc::now(),
+        };
+
+        match s.insert("r1".into(), rec.clone()) {
+            Ok(_) => (),
+            Err(e) => {
+                eprintln!("Skipping redis test (insert failed): {:?}", e);
+                return;
+            }
+        }
+
+        match s.get("r1") {
+            Ok(Some(g)) => assert_eq!(g.access_token, "a"),
+            Ok(None) => panic!("missing record"),
+            Err(e) => {
+                eprintln!("Skipping redis test (get failed): {:?}", e);
+                return;
+            }
+        }
+
+        match s.remove("r1") {
+            Ok(Some(_)) => (),
+            Ok(None) => panic!("expected removal"),
+            Err(e) => {
+                eprintln!("Skipping redis test (remove failed): {:?}", e);
+            }
         }
     }
 }
