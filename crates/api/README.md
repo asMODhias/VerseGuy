@@ -43,3 +43,29 @@ cargo run -p verseguy-api
 ```
 
 If Redis is not available, tests that require Redis will be skipped gracefully.
+
+### OpenAPI & Docs UI
+
+This crate embeds a minimal OpenAPI specification at `GET /openapi.yaml` and serves a local documentation UI at `GET /docs`.
+
+- The documentation page now uses a lightweight, interactive local UI (`static/swagger-ui/interactive.js`) which supports basic "Try it" interactions (GET/POST/PUT), header editor (JSON), and a JSON body editor for request payloads. Responses show status, headers and a pretty-printed body (JSON if available).
+
+- If you prefer the full official Swagger UI (recommended for richer interactivity, OpenAPI parameter rendering and the standard UX), you may vendor the `swagger-ui-dist` bundle into `crates/api/static/swagger-ui` using the helper scripts in the repository root:
+
+```bash
+# Linux / macOS
+scripts/fetch-swagger-ui.sh
+
+# Windows PowerShell
+scripts/fetch-swagger-ui.ps1 -Version 4.18.3
+```
+
+After downloading, replace `static/swagger-ui/swagger-ui-bundle.js` with the downloaded `swagger-ui-bundle.min.js` and add `swagger-ui-standalone-preset.min.js` if you want the full preset feature set.
+
+- CI: The repository includes a workflow (`.github/workflows/docs-ci.yml`) which optionally fetches the official Swagger UI dist, runs Spectral to lint `crates/api/openapi.yaml` and executes `cargo test -p verseguy-api`. The workflow treats vendored assets as optional (the docs UI still falls back to the local interactive implementation).
+
+- Note: `swagger-ui-dist` is MIT-licensed; check the upstream license when vendoring assets.
+
+The OpenAPI spec includes OAuth2 securitySchemes for Authorization Code and Client Credentials flows and marks `/protected` as a secured endpoint requiring the `read` scope.
+
+You can view the API documentation locally by running the service and navigating to `http://localhost:3000/docs`.

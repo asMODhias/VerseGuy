@@ -1,0 +1,155 @@
+openapi: 3.0.1
+info:
+  title: VerseGuy API (TEIL 13)
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /metrics:
+    get:
+      summary: Metrics placeholder
+      responses:
+        '200':
+          description: Metrics (text)
+  /protected:
+    get:
+      summary: Protected endpoint (placeholder)
+      security:
+        - oauth2: ["read"]
+      parameters:
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: authorized
+        '401':
+          description: unauthorized
+  /oauth/authorize:
+    get:
+      summary: Authorization endpoint (Authorization Code)
+      parameters:
+        - name: response_type
+          in: query
+          required: true
+          schema:
+            type: string
+          description: must be `code`
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: redirect with `code` and optional `state`
+  /oauth/token:
+    post:
+      summary: Token endpoint
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                grant_type:
+                  type: string
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+                refresh_token:
+                  type: string
+                code:
+                  type: string
+                redirect_uri:
+                  type: string
+      responses:
+        '200':
+          description: Token response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                client_credentials:
+                  summary: client credentials response example
+                  value:
+                    access_token: "abc"
+                    token_type: "bearer"
+                    expires_in: 3600
+                    refresh_token: "r-123"
+                refresh_token:
+                  summary: Refresh token response example
+                  value:
+                    access_token: "def"
+                    token_type: "bearer"
+                    expires_in: 3600
+                    refresh_token: "r-456"
+                authorization_code:
+                  summary: Authorization code response example
+                  value:
+                    access_token: "ghi"
+                    token_type: "bearer"
+                    expires_in: 3600
+                    refresh_token: "r-789"
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized / invalid credentials
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: "/oauth/authorize"
+          tokenUrl: "/oauth/token"
+          scopes:
+            read: read access
+            write: write access
+        clientCredentials:
+          tokenUrl: "/oauth/token"
+          scopes:
+            read: read access
+            write: write access
+  schemas:
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+      properties:
+        access_token:
+          type: string
+          description: The access token value.
+        token_type:
+          type: string
+          description: e.g., "bearer"
+        expires_in:
+          type: integer
+          description: Lifetime in seconds
+        refresh_token:
+          type: string
+          description: Refresh token (if issued)
+        scope:
+          type: string
+          description: Scopes granted by the token

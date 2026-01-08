@@ -22,7 +22,113 @@ pub fn build_app_with_store(store: std::sync::Arc<dyn store::TokenStore>) -> Rou
         .route("/protected", get(protected_handler))
         .route("/oauth/token", post(token_handler))
         .route("/oauth/authorize", get(authorize_handler))
+        .route("/openapi.yaml", get(openapi_handler))
+        .route("/docs", get(docs_handler))
+        .route("/static/*file", get(static_handler))
         .layer(Extension(store))
+}
+
+async fn openapi_handler() -> impl IntoResponse {
+    // Embed the OpenAPI YAML for serving
+    let yaml = include_str!("../openapi.yaml");
+    (
+        axum::http::StatusCode::OK,
+        [("content-type", "text/yaml")],
+        yaml,
+    )
+}
+
+async fn docs_handler() -> impl IntoResponse {
+    // Local Swagger UI that points to `/openapi.yaml` and uses offline assets served from /static/
+    const HTML: &str = r#"<!doctype html>
+<html>
+  <head>
+    <meta charset='utf-8'/>
+    <title>VerseGuy API Docs</title>
+    <!-- Prefer vendored official bundle if present -->
+    <link rel="stylesheet" href="/static/swagger-ui/swagger-ui.bundle.css" />
+    <link rel="stylesheet" href="/static/swagger-ui/swagger-ui.css" />
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+
+    <!-- Official dist (if vendored) -->
+    <script src="/static/swagger-ui/swagger-ui-bundle.min.js"></script>
+    <script src="/static/swagger-ui/swagger-ui-standalone-preset.min.js"></script>
+
+    <!-- Local interactive fallback and minimal bundle -->
+    <script src="/static/swagger-ui/swagger-ui-bundle.js"></script>
+    <script src="/static/swagger-ui/interactive.js"></script>
+
+    <script>
+      // Prefer the official SwaggerUIBundle if it's loaded, else fall back to our interactive UI
+      if (typeof SwaggerUIBundle !== 'undefined') {
+        // if standalone preset is available, use it
+        const presets = typeof SwaggerUIStandalonePreset !== 'undefined' ? [SwaggerUIStandalonePreset] : [];
+        try {
+          const ui = SwaggerUIBundle({ url: '/openapi.yaml', dom_id: '#swagger-ui', presets: presets });
+        } catch (e) {
+          // fall back to interactive UI if initialization fails
+          if (window.renderInteractiveUI) window.renderInteractiveUI('/openapi.yaml', '#swagger-ui');
+        }
+      } else if (window.renderInteractiveUI) {
+        window.renderInteractiveUI('/openapi.yaml', '#swagger-ui');
+      } else {
+        document.getElementById('swagger-ui').innerText = 'No UI available';
+      }
+    </script>
+  </body>
+</html>"#;
+
+    (
+        axum::http::StatusCode::OK,
+        [("content-type", "text/html")],
+        HTML,
+    )
+}
+
+// Serve a small set of built-in static assets for offline Swagger UI
+async fn static_handler(path: axum::extract::Path<String>) -> impl IntoResponse {
+    let p = path.0;
+    match p.as_str() {
+        "swagger-ui/swagger-ui-bundle.js" => (
+            axum::http::StatusCode::OK,
+            [("content-type", "application/javascript")],
+            include_str!("../static/swagger-ui/swagger-ui-bundle.js"),
+        )
+            .into_response(),
+        "swagger-ui/interactive.js" => (
+            axum::http::StatusCode::OK,
+            [("content-type", "application/javascript")],
+            include_str!("../static/swagger-ui/interactive.js"),
+        )
+            .into_response(),
+        "swagger-ui/swagger-ui-bundle.min.js" => (
+            axum::http::StatusCode::OK,
+            [("content-type", "application/javascript")],
+            include_str!("../static/swagger-ui/swagger-ui-bundle.min.js"),
+        )
+            .into_response(),
+        "swagger-ui/swagger-ui-standalone-preset.min.js" => (
+            axum::http::StatusCode::OK,
+            [("content-type", "application/javascript")],
+            include_str!("../static/swagger-ui/swagger-ui-standalone-preset.min.js"),
+        )
+            .into_response(),
+        "swagger-ui/swagger-ui.bundle.css" => (
+            axum::http::StatusCode::OK,
+            [("content-type", "text/css")],
+            include_str!("../static/swagger-ui/swagger-ui.bundle.css"),
+        )
+            .into_response(),
+        "swagger-ui/swagger-ui.css" => (
+            axum::http::StatusCode::OK,
+            [("content-type", "text/css")],
+            include_str!("../static/swagger-ui/swagger-ui.css"),
+        )
+            .into_response(),
+        _ => (axum::http::StatusCode::NOT_FOUND, "not found").into_response(),
+    }
 }
 
 async fn health_handler() -> impl IntoResponse {
