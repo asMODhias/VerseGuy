@@ -84,7 +84,7 @@ aes-gcm = "0.10"
 ring = "0.17.14"
 
 # Networking
-libp2p = { version = "0.56.0", features = ["tcp", "quic", "mdns", "kad", "gossipsub", "noise", "yamux"] }
+libp2p = { version = "0.57.0", features = ["tcp", "quic", "mdns", "kad", "gossipsub", "noise", "yamux"] }
 libp2p-core = "0.43.2"
 libp2p-swarm = "0.48.0"
 libp2p-mdns = "0.48.0"
@@ -115,5 +115,8 @@ panic = "abort"
 # Temporary local patch to test bumping ring via a patched rcgen fork. Remove this after upstream rcgen ships a release that resolves the advisory.
 rcgen = { path = "patches/rcgen/rcgen" }
 libp2p-tls = { path = "patches/libp2p-tls" }
+# Try using the official libp2p git sources for the swarm crate to get a newer dependency set
+# (temporary; will revert if it causes larger breakage).
+libp2p-swarm = { git = "https://github.com/libp2p/rust-libp2p", rev = "v0.48.0", package = "libp2p-swarm" }
 
 
