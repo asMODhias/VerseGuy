@@ -1,12 +1,14 @@
-use master_server::build_app;
+use master_server::plugins::PluginManifest;
 use std::sync::Arc;
 use tempfile::TempDir;
 use verseguy_test_utils::{must, must_opt};
-use master_server::plugins::PluginManifest;
 
 #[test]
 fn isolate_store_manifest() {
-    let rt = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+    let rt = match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
         Ok(rt) => rt,
         Err(e) => panic!("failed to build runtime: {}", e),
     };
@@ -15,7 +17,10 @@ fn isolate_store_manifest() {
         // create app state with temp DB
         let dir = must(TempDir::new());
         let db_path = must_opt(dir.path().to_str(), "tempdir path not utf8").to_string();
-        let state = Arc::new(must(master_server::state::AppState::new(db_path, b"secret".to_vec())));
+        let state = Arc::new(must(master_server::state::AppState::new(
+            db_path,
+            b"secret".to_vec(),
+        )));
 
         let manifest = PluginManifest {
             id: "org.isolate.test".to_string(),

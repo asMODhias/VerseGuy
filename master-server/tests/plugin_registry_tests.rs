@@ -7,9 +7,18 @@ use std::sync::Arc;
 use tower::util::ServiceExt;
 use verseguy_test_utils::{must, must_opt};
 
-#[tokio::test]
-async fn publish_and_search_plugin() {
-    let dir = must(tempfile::tempdir());
+#[test]
+fn publish_and_search_plugin() {
+    let rt = match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(rt) => rt,
+        Err(e) => panic!("failed to build runtime: {}", e),
+    };
+
+    rt.block_on(async {
+        let dir = must(tempfile::tempdir());
     let db_path = must_opt(dir.path().to_str(), "tempdir path not utf8").to_string();
     let state = Arc::new(must(AppState::new(db_path, b"secret".to_vec())));
 
@@ -57,4 +66,5 @@ async fn publish_and_search_plugin() {
         ),
         "org.example.plugin"
     );
+    });
 }

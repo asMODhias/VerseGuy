@@ -1,16 +1,18 @@
-
+use axum::http::{Method, Request, Response, StatusCode};
 use master_server::build_app;
 use std::sync::Arc;
-use tower::util::ServiceExt;
-use axum::http::{Method, Request, Response, StatusCode};
 use tempfile::TempDir;
+use tower::util::ServiceExt;
 use verseguy_test_utils::{must, must_opt};
 
 // This test previously used `#[tokio::test]` which expands to code calling `Runtime::build().expect(...)`.
 // Avoid `std::result::Result::expect` in macro expansions by constructing the runtime manually.
 #[test]
 fn publish_requires_plugin_token_when_set() {
-    let rt = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+    let rt = match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
         Ok(rt) => rt,
         Err(e) => panic!("failed to build runtime: {}", e),
     };

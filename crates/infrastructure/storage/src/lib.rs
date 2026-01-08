@@ -13,5 +13,5 @@ pub mod key_store;
 pub mod migration;
 
 pub use engine::StorageEngine;
-pub use repository::Repository;
 pub use migration::MigrationManager;
+pub use repository::Repository;

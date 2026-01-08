@@ -3,10 +3,19 @@ use std::sync::Arc;
 use tempfile::tempdir;
 use verseguy_test_utils::must;
 
-#[tokio::test]
+#[test]
 #[allow(clippy::disallowed_methods)]
-async fn create_and_get_latest_legal_doc() {
-    let dir = must(tempdir());
+fn create_and_get_latest_legal_doc() {
+    let rt = match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(rt) => rt,
+        Err(e) => panic!("failed to build runtime: {}", e),
+    };
+
+    rt.block_on(async {
+        let dir = must(tempdir());
     let state = Arc::new(must(AppState::new(dir.path(), b"test-secret".to_vec())));
 
     // set admin token so handler allows operation
@@ -47,4 +56,5 @@ async fn create_and_get_latest_legal_doc() {
     let axum::Json(val) = latest_res;
     let s = must(serde_json::to_string(&val));
     assert!(s.contains("Terms of Service"));
+    });
 }
