@@ -13148,6 +13148,8 @@ tokio = { workspace = true, features = ["full"] }
 # Utilities
 tracing = { workspace = true }
 metrics = { workspace = true }
+
+**Persistent token store:** The API supports an optional persistent token store (Sled) to persist refresh tokens across restarts. To enable it, set the environment variable `VERSEGUY_API_TOKEN_STORE=sled` before running the API. See `crates/api/README.md` and `crates/api/tests/sled_persistence.rs` for details.
 ```
 
 ```rust

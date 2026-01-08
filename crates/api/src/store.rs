@@ -37,6 +37,12 @@ impl InMemoryTokenStore {
     }
 }
 
+impl Default for InMemoryTokenStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TokenStore for InMemoryTokenStore {
     fn insert(&self, refresh_token: String, record: TokenRecord) -> Result<(), StoreError> {
         match self.inner.lock() {

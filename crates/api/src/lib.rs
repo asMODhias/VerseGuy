@@ -52,7 +52,7 @@ struct TokenResponse {
     scope: Option<String>,
 }
 
-mod store;
+pub mod store;
 use crate::store::{TokenRecord, TOKEN_STORE};
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
