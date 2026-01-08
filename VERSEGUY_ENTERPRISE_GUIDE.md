@@ -13107,7 +13107,9 @@ Verbleibend: 3 Teile (~2,000 Zeilen)
 Aktuell: 12,622 / ~15,000 Zeilen (84%)
 ```
 
-**Soll ich mit TEIL 13 (API & UI Integration) weitermachen?** 🌐
+**Status: Ich beginne mit der Implementierung von TEIL 13 (API & UI Integration).** 🌐
+
+> Hinweise: erstes Ergebnis: ein neues Crate `crates/api` wurde angelegt mit minimalen Endpunkten `/health` und `/metrics` und einem Test. Weitere Implementierungsphasen folgen gemäß Plan.
 
 # 🌐 TEIL 13: API & UI INTEGRATION
 
@@ -14126,6 +14128,7 @@ Completed:
   ✅ API documentation
   ✅ Frontend integration guide
      - TypeScript types
+  ✅ Initial API crate scaffolded (`crates/api`) with basic endpoints: `/health`, `/metrics`, `/protected` and automated tests
      - API client
      - React examples
 
