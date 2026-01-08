@@ -26,6 +26,10 @@ members = [
     "crates/infrastructure/authorization",
     "crates/infrastructure/licensing",
     "crates/infrastructure/audit",
+    "crates/domain/organization",
+    "crates/domain/fleet",
+    "crates/domain/operations",
+    "crates/domain/application",
     "crates/migrations",
 ]
 

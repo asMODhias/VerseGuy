@@ -3087,12 +3087,17 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "verseguy-domain-application",
+ "verseguy-domain-fleet",
+ "verseguy-domain-operations",
+ "verseguy-domain-organization",
  "verseguy_audit",
  "verseguy_auth",
  "verseguy_authorization",
  "verseguy_compliance",
  "verseguy_licensing",
  "verseguy_storage",
+ "verseguy_storage_infra",
  "verseguy_test_utils",
 ]
 
@@ -5846,6 +5851,68 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "verseguy-domain-application"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "serde",
+ "tempfile",
+ "tokio",
+ "uuid",
+ "verseguy_storage",
+]
+
+[[package]]
+name = "verseguy-domain-fleet"
+version = "2.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "uuid",
+ "verseguy_shared_error",
+ "verseguy_storage",
+ "verseguy_storage_infra",
+]
+
+[[package]]
+name = "verseguy-domain-operations"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "serde",
+ "tempfile",
+ "tokio",
+ "verseguy_storage",
+ "verseguy_storage_infra",
+]
+
+[[package]]
+name = "verseguy-domain-organization"
+version = "2.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "uuid",
+ "verseguy_shared_error",
+ "verseguy_storage_infra",
+]
 
 [[package]]
 name = "verseguy_audit"

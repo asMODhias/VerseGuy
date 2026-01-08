@@ -380,12 +380,544 @@ pub async fn orgs_create_handler(
 pub async fn orgs_get_handler(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
-) -> Result<Json<Option<OrgType>>, (axum::http::StatusCode, String)> {
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
     let svc = OrganizationService::new((*state.storage).clone());
-    let org = svc
+    let org_opt = svc
         .get_organization(&id)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
-    Ok(Json(org))
+
+    if let Some(org) = org_opt {
+        let members = svc
+            .list_members(&org.id)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+        let mut obj = serde_json::to_value(&org)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+        if let serde_json::Value::Object(ref mut map) = obj {
+            map.insert(
+                "members".to_string(),
+                serde_json::to_value(&members).unwrap(),
+            );
+        }
+        Ok(Json(obj))
+    } else {
+        Ok(Json(serde_json::json!(null)))
+    }
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn orgs_delete_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), (axum::http::StatusCode, String)> {
+    let svc = OrganizationService::new((*state.storage).clone());
+    svc.delete_organization(&id)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok((StatusCode::OK, Json(serde_json::json!({"deleted": true}))))
+}
+
+#[derive(Deserialize)]
+pub struct DepositRequest {
+    pub amount: i64,
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn orgs_deposit_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(req): Json<DepositRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let svc = OrganizationService::new((*state.storage).clone());
+    svc.deposit(&id, req.amount)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    let org = svc
+        .get_organization(&id)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "not found".to_string()))?;
+    Ok(Json(
+        serde_json::json!({"id": org.id, "balance": org.treasury_balance}),
+    ))
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn orgs_withdraw_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(req): Json<DepositRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let svc = OrganizationService::new((*state.storage).clone());
+    svc.withdraw(&id, req.amount).map_err(|e| {
+        // treat treasury errors as bad request
+        (StatusCode::BAD_REQUEST, format!("{}", e))
+    })?;
+    let org = svc
+        .get_organization(&id)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "not found".to_string()))?;
+    Ok(Json(
+        serde_json::json!({"id": org.id, "balance": org.treasury_balance}),
+    ))
+}
+
+#[derive(Deserialize)]
+pub struct AddMemberRequest {
+    pub user_id: String,
+    pub rank_id: Option<String>,
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn orgs_add_member_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(req): Json<AddMemberRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let svc = OrganizationService::new((*state.storage).clone());
+    // fetch org to ensure exists
+    let _org = svc
+        .get_organization(&id)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "not found".to_string()))?;
+
+    // pick rank id or default to empty
+    let rank_id = req.rank_id.clone().unwrap_or_default();
+
+    let member = plugins_base_organization::types::Member {
+        id: uuid::Uuid::new_v4().to_string(),
+        org_id: id.clone(),
+        user_id: req.user_id.clone(),
+        handle: req.user_id.clone(),
+        rank_id,
+        joined_at: chrono::Utc::now(),
+        notes: None,
+    };
+    svc.add_member(member)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"ok": true})))
+}
+
+// --- Fleet endpoints ---
+
+#[derive(Deserialize)]
+pub struct CreateFleetRequest {
+    pub id: Option<String>,
+    pub name: String,
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn fleets_create_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<CreateFleetRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    // Repo and service
+    let repo = std::sync::Arc::new(
+        verseguy_domain_fleet::repo::storage_adapter::StorageFleetRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_fleet::service::FleetService::new(repo);
+
+    let id = req
+        .id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let created = svc
+        .create_fleet(id.clone(), req.name)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::to_value(&created).map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
+    })?))
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn fleets_list_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let items: Vec<serde_json::Value> = (*state.storage)
+        .prefix_scan(b"fleet:")
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"fleets": items})))
+}
+
+// --- Operations endpoints ---
+
+#[derive(Deserialize)]
+pub struct CreateOperationRequest {
+    pub id: Option<String>,
+    pub name: String,
+    pub description: Option<String>,
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn operations_create_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<CreateOperationRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_operations::repo::storage_adapter::StorageOperationsRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_operations::service::OperationsService::new(repo);
+
+    let id = req
+        .id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let created = svc
+        .create_operation(id.clone(), req.name, req.description)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::to_value(&created).map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
+    })?))
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn operations_list_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let items: Vec<serde_json::Value> = (*state.storage)
+        .prefix_scan(b"operation:")
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"operations": items})))
+}
+
+// --- Application endpoints ---
+
+#[derive(Deserialize)]
+pub struct CreateAppRequest {
+    pub id: Option<String>,
+    pub name: String,
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn apps_create_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<CreateAppRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_application::repo::storage_adapter::StorageApplicationRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_application::service::ApplicationService::new(repo);
+
+    let id = req
+        .id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let created = svc
+        .create(id.clone(), req.name)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::to_value(&created).map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
+    })?))
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn apps_list_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    // list with empty prefix
+    let repo = std::sync::Arc::new(
+        verseguy_domain_application::repo::storage_adapter::StorageApplicationRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_application::service::ApplicationService::new(repo);
+    let items = svc
+        .list("")
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"apps": items})))
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn apps_get_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_application::repo::storage_adapter::StorageApplicationRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_application::service::ApplicationService::new(repo);
+    let opt = svc
+        .get(&id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    if let Some(a) = opt {
+        Ok(Json(serde_json::to_value(&a).map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
+        })?))
+    } else {
+        Ok(Json(serde_json::json!(null)))
+    }
+}
+
+#[derive(Deserialize)]
+pub struct UpdateAppRequest {
+    pub name: Option<String>,
+    pub metadata: Option<std::collections::HashMap<String, String>>,
+    pub tags: Option<Vec<String>>,
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn apps_update_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(req): Json<UpdateAppRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_application::repo::storage_adapter::StorageApplicationRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_application::service::ApplicationService::new(repo);
+    if let Some(name) = req.name {
+        svc.update_name(&id, name)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    }
+    if let Some(metadata) = req.metadata {
+        for (k, v) in metadata.into_iter() {
+            svc.set_metadata(&id, k, v)
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+        }
+    }
+    if let Some(tags) = req.tags {
+        svc.set_tags(&id, tags)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    }
+    Ok(Json(serde_json::json!({"ok": true})))
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn apps_delete_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_application::repo::storage_adapter::StorageApplicationRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_application::service::ApplicationService::new(repo);
+    svc.delete(&id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"deleted": true})))
+}
+
+#[derive(Deserialize)]
+pub struct BulkCreateAppItem {
+    pub id: Option<String>,
+    pub name: String,
+}
+
+#[derive(Deserialize)]
+pub struct BulkCreateAppsRequest {
+    pub apps: Vec<BulkCreateAppItem>,
+}
+
+#[derive(Deserialize)]
+pub struct BulkDeleteRequest {
+    pub ids: Vec<String>,
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn apps_bulk_create_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<BulkCreateAppsRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_application::repo::storage_adapter::StorageApplicationRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_application::service::ApplicationService::new(repo);
+
+    let mut created = Vec::new();
+    for item in req.apps.into_iter() {
+        let id = item.id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+        let a = svc
+            .create(id.clone(), item.name)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+        created.push(a);
+    }
+
+    Ok(Json(serde_json::json!({"apps": created})))
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn apps_bulk_delete_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<BulkDeleteRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_application::repo::storage_adapter::StorageApplicationRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_application::service::ApplicationService::new(repo);
+    svc.bulk_delete(req.ids)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"deleted": true})))
+}
+#[allow(clippy::disallowed_methods)]
+pub async fn fleets_get_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_fleet::repo::storage_adapter::StorageFleetRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_fleet::service::FleetService::new(repo);
+    let fopt = svc
+        .get_fleet(&id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    if let Some(f) = fopt {
+        Ok(Json(serde_json::to_value(&f).map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
+        })?))
+    } else {
+        Ok(Json(serde_json::json!(null)))
+    }
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn operations_get_handler(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_operations::repo::storage_adapter::StorageOperationsRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_operations::service::OperationsService::new(repo);
+    let opt = svc
+        .get_operation(&id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    if let Some(o) = opt {
+        Ok(Json(serde_json::to_value(&o).map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
+        })?))
+    } else {
+        Ok(Json(serde_json::json!(null)))
+    }
+}
+
+#[derive(Deserialize)]
+pub struct AddFleetShipRequest {
+    pub id: Option<String>,
+    pub ship_type_id: String,
+    pub name: Option<String>,
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn fleets_add_ship_handler(
+    State(state): State<Arc<AppState>>,
+    Path(fleet_id): Path<String>,
+    Json(req): Json<AddFleetShipRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_fleet::repo::storage_adapter::StorageFleetRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_fleet::service::FleetService::new(repo);
+
+    let ship_id = req
+        .id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let ship = verseguy_domain_fleet::entity::Ship::new(
+        ship_id,
+        req.ship_type_id.clone(),
+        req.name.clone().unwrap_or_default(),
+    );
+    svc.add_ship(&fleet_id, ship)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"ok": true})))
+}
+
+#[derive(Deserialize)]
+pub struct AddOperationParticipantRequest {
+    pub id: Option<String>,
+    pub user_id: String,
+    pub role: String,
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn operations_add_participant_handler(
+    State(state): State<Arc<AppState>>,
+    Path(op_id): Path<String>,
+    Json(req): Json<AddOperationParticipantRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_operations::repo::storage_adapter::StorageOperationsRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_operations::service::OperationsService::new(repo);
+
+    let id = req
+        .id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let part = verseguy_domain_operations::entity::Participant::new(
+        id,
+        req.user_id.clone(),
+        req.role.clone(),
+    );
+    svc.add_participant(&op_id, part)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"ok": true})))
+}
+
+#[derive(Deserialize)]
+pub struct UpdateOperationStatusRequest {
+    pub status: String,
+}
+
+#[allow(clippy::disallowed_methods)]
+pub async fn operations_update_status_handler(
+    State(state): State<Arc<AppState>>,
+    Path(op_id): Path<String>,
+    Json(req): Json<UpdateOperationStatusRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    let repo = std::sync::Arc::new(
+        verseguy_domain_operations::repo::storage_adapter::StorageOperationsRepository::new(
+            state.storage.clone(),
+        ),
+    );
+    let svc = verseguy_domain_operations::service::OperationsService::new(repo);
+
+    let status = match req.status.as_str() {
+        "Planned" => verseguy_domain_operations::value_object::OperationStatus::Planned,
+        "Running" => verseguy_domain_operations::value_object::OperationStatus::Running,
+        "Completed" => verseguy_domain_operations::value_object::OperationStatus::Completed,
+        "Cancelled" => verseguy_domain_operations::value_object::OperationStatus::Cancelled,
+        _ => return Err((StatusCode::BAD_REQUEST, "invalid status".to_string())),
+    };
+
+    svc.update_status(&op_id, status)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
+    Ok(Json(serde_json::json!({"ok": true})))
 }
 
 // --- Stubs for handlers referenced by older routes ---

@@ -126,7 +126,10 @@ mod tests {
             resource: "org:123".to_string(),
             metadata: {
                 let mut m = serde_json::Map::new();
-                m.insert("foo".to_string(), serde_json::Value::String("bar".to_string()));
+                m.insert(
+                    "foo".to_string(),
+                    serde_json::Value::String("bar".to_string()),
+                );
                 serde_json::Value::Object(m)
             },
             version: 0,

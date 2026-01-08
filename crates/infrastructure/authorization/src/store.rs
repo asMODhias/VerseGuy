@@ -123,7 +123,9 @@ impl AuthStore {
         license_store: &verseguy_licensing_infra::LicensingStore,
         license_id: &str,
     ) -> AppResult<bool> {
-        let checker = |feat: &str| -> anyhow::Result<bool> { license_store.license_has_feature(license_id, feat) };
+        let checker = |feat: &str| -> anyhow::Result<bool> {
+            license_store.license_has_feature(license_id, feat)
+        };
         self.evaluate_with_license_checker(policy_name, user_id, checker)
     }
 }

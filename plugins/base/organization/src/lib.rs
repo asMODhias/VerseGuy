@@ -131,6 +131,7 @@ mod tests {
             founded: now,
             owner_id: "owner".into(),
             member_count: 5,
+            treasury_balance: 0,
             created_at: now,
             updated_at: now,
         };

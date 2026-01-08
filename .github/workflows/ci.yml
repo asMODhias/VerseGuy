@@ -311,7 +311,7 @@ PY
           PLAYWRIGHT_API_URL: http://127.0.0.1:3001
         working-directory: ui/web
         run: |
-          npm run test:e2e --silent || true
+          npm run test:e2e --silent
 
       - name: Upload Playwright results
         if: always()

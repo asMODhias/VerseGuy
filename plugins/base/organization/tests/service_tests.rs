@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods)]
 use plugins_base_organization::service::OrganizationService;
 use plugins_base_organization::types::{Member, Organization};
 use tempfile::TempDir;
@@ -24,6 +25,7 @@ fn test_create_get_delete_org() {
         founded: now,
         owner_id: "owner".into(),
         member_count: 0,
+        treasury_balance: 0,
         created_at: now,
         updated_at: now,
     };
@@ -36,9 +38,6 @@ fn test_create_get_delete_org() {
         Ok(_) => {}
         Err(e) => panic!("create_organization failed: {}", e),
     }
-
-    // Note: creation above uses auto-generated id in create_organization; to verify, just assert no panic on call
-    // Alternatively: create_organization returns the org and we could assert fields
 
     // For the test, call create_organization and ensure it returns an Organization
     let org2 = match svc.create_organization(
@@ -74,4 +73,31 @@ fn test_members_crud() {
     assert_eq!(got.len(), 1);
 
     // remove member by id not implemented; skip remove test
+}
+
+#[test]
+fn test_treasury_ops() {
+    let tmp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(Storage::open(tmp.path()));
+    let svc = OrganizationService::new(storage.clone());
+
+    let org = verseguy_test_utils::must(svc.create_organization(
+        "TOrg".into(),
+        "TO".into(),
+        "desc".into(),
+        "owner".into(),
+    ));
+
+    verseguy_test_utils::must(svc.deposit(&org.id, 1000));
+    let loaded = verseguy_test_utils::must(svc.get_organization(&org.id));
+    let loaded = loaded.expect("exists");
+    assert_eq!(loaded.treasury_balance, 1000);
+
+    verseguy_test_utils::must(svc.withdraw(&org.id, 500));
+    let loaded2 = verseguy_test_utils::must(svc.get_organization(&org.id));
+    let loaded2 = loaded2.expect("exists");
+    assert_eq!(loaded2.treasury_balance, 500);
+
+    let res = svc.withdraw(&org.id, 1000);
+    assert!(res.is_err());
 }

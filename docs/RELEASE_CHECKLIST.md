@@ -37,7 +37,7 @@
 ## Release
 
 - [ ] Git tag created
-- [ ] Release notes written
+- [x] Release notes written
 - [ ] Binaries uploaded
 - [ ] Installer uploaded
 - [ ] Documentation published

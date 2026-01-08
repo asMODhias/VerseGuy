@@ -1,8 +1,9 @@
+#![allow(clippy::disallowed_methods)]
+use axum::http::{Method, Request, Response};
 use master_server::build_app;
 use std::sync::Arc;
-use tower::util::ServiceExt;
-use axum::http::{Method, Request, Response};
 use tempfile::TempDir;
+use tower::util::ServiceExt;
 use verseguy_test_utils::{must, must_opt};
 
 #[tokio::test]
@@ -12,7 +13,10 @@ async fn publish_requires_plugin_token_when_set() {
 
     let dir = must(TempDir::new());
     let db_path = must_opt(dir.path().to_str(), "tempdir path not utf8").to_string();
-    let state = Arc::new(must(master_server::state::AppState::new(db_path, b"secret".to_vec())));
+    let state = Arc::new(must(master_server::state::AppState::new(
+        db_path,
+        b"secret".to_vec(),
+    )));
     let app = build_app(state.clone());
 
     let manifest_body = r#"{ "manifest": { "id": "org.auth.test", "name": "AuthTest", "version": "0.1.0", "author": "Test", "description": "Auth test", "published_at": null } }"#;
