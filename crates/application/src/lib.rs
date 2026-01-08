@@ -59,7 +59,7 @@ impl ApplicationService {
 
     pub fn add_member(&self, dto: AddMemberDto, _user: String) -> Result<(), ()> {
         let mut map = self.orgs.lock().unwrap();
-        if let Some(mut org) = map.get_mut(&dto.organization_id) {
+        if let Some(org) = map.get_mut(&dto.organization_id) {
             org.member_count += 1;
             Ok(())
         } else {
@@ -74,7 +74,7 @@ impl ApplicationService {
 
     pub fn deposit_funds(&self, dto: TreasuryOperationDto, _user: String) -> Result<(), ()> {
         let mut map = self.orgs.lock().unwrap();
-        if let Some(mut org) = map.get_mut(&dto.organization_id) {
+        if let Some(org) = map.get_mut(&dto.organization_id) {
             org.treasury_balance += dto.amount as i64;
             Ok(())
         } else { Err(()) }
@@ -82,7 +82,7 @@ impl ApplicationService {
 
     pub fn withdraw_funds(&self, dto: TreasuryOperationDto, _user: String) -> Result<(), ()> {
         let mut map = self.orgs.lock().unwrap();
-        if let Some(mut org) = map.get_mut(&dto.organization_id) {
+        if let Some(org) = map.get_mut(&dto.organization_id) {
             if org.treasury_balance < dto.amount as i64 { return Err(()) }
             org.treasury_balance -= dto.amount as i64;
             Ok(())
@@ -98,7 +98,7 @@ impl ApplicationService {
 
     pub fn add_ship(&self, dto: AddShipDto, _user: String) -> Result<(), ()> {
         let mut map = self.fleets.lock().unwrap();
-        if let Some(mut fleet) = map.get_mut(&dto.fleet_id) {
+        if let Some(fleet) = map.get_mut(&dto.fleet_id) {
             fleet.ship_count += 1;
             fleet.total_crew += dto.crew_size as usize;
             Ok(())
@@ -119,7 +119,7 @@ impl ApplicationService {
 
     pub fn add_participant(&self, dto: AddParticipantDto, _user: String) -> Result<(), ()> {
         let mut map = self.ops.lock().unwrap();
-        if let Some(mut op) = map.get_mut(&dto.operation_id) {
+        if let Some(op) = map.get_mut(&dto.operation_id) {
             op.participant_count += 1;
             Ok(())
         } else { Err(()) }
@@ -127,7 +127,7 @@ impl ApplicationService {
 
     pub fn start_operation(&self, id: String, _user: String) -> Result<(), ()> {
         let mut map = self.ops.lock().unwrap();
-        if let Some(mut op) = map.get_mut(&id) {
+        if let Some(op) = map.get_mut(&id) {
             op.status = "in_progress".to_string();
             Ok(())
         } else { Err(()) }

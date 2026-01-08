@@ -24,8 +24,8 @@ impl TestContext {
 #[test]
 fn test_create_operation() {
     let ctx = TestContext::new();
-    let start = chrono::Utc::now() + chrono::Duration::hours(1);
-    let end = start + chrono::Duration::hours(2);
+    let start = Utc::now() + Duration::hours(1);
+    let end = start + Duration::hours(2);
 
     let dto = CreateOperationDto {
         organization_id: "org_123".to_string(),
