@@ -34,6 +34,6 @@ fn test_create_organization() {
         .app_service
         .create_organization(dto, ctx.user_id.clone());
     assert!(result.is_ok());
-    let org = result.unwrap();
+    let org = match result { Ok(o) => o, Err(_) => panic!("create_organization returned Err"), };
     assert_eq!(org.name, "Test Organization");
 }

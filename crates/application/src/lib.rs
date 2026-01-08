@@ -1,3 +1,5 @@
+#![allow(clippy::result_unit_err)]
+
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -64,12 +66,13 @@ impl ApplicationService {
             member_count: 1,
             treasury_balance: 0,
         };
-        self.orgs.lock().unwrap().insert(id.clone(), org.clone());
+        let mut guard = self.orgs.lock().map_err(|_| ())?;
+        guard.insert(id.clone(), org.clone());
         Ok(org)
     }
 
     pub fn add_member(&self, dto: AddMemberDto, _user: String) -> Result<(), ()> {
-        let mut map = self.orgs.lock().unwrap();
+        let mut map = self.orgs.lock().map_err(|_| ())?;
         if let Some(org) = map.get_mut(&dto.organization_id) {
             org.member_count += 1;
             Ok(())
@@ -79,14 +82,14 @@ impl ApplicationService {
     }
 
     pub fn get_organization(&self, id: &str) -> Result<Organization, ()> {
-        let map = self.orgs.lock().unwrap();
+        let map = self.orgs.lock().map_err(|_| ())?;
         map.get(id).cloned().ok_or(())
     }
 
     pub fn deposit_funds(&self, dto: TreasuryOperationDto, _user: String) -> Result<(), ()> {
-        let mut map = self.orgs.lock().unwrap();
+        let mut map = self.orgs.lock().map_err(|_| ())?;
         if let Some(org) = map.get_mut(&dto.organization_id) {
-            org.treasury_balance += dto.amount as i64;
+            org.treasury_balance += dto.amount;
             Ok(())
         } else {
             Err(())
@@ -94,12 +97,12 @@ impl ApplicationService {
     }
 
     pub fn withdraw_funds(&self, dto: TreasuryOperationDto, _user: String) -> Result<(), ()> {
-        let mut map = self.orgs.lock().unwrap();
+        let mut map = self.orgs.lock().map_err(|_| ())?;
         if let Some(org) = map.get_mut(&dto.organization_id) {
-            if org.treasury_balance < dto.amount as i64 {
+            if org.treasury_balance < dto.amount {
                 return Err(());
             }
-            org.treasury_balance -= dto.amount as i64;
+            org.treasury_balance -= dto.amount;
             Ok(())
         } else {
             Err(())
@@ -115,15 +118,13 @@ impl ApplicationService {
             ship_count: 0,
             total_crew: 0,
         };
-        self.fleets
-            .lock()
-            .unwrap()
-            .insert(id.clone(), fleet.clone());
+        let mut guard = self.fleets.lock().map_err(|_| ())?;
+        guard.insert(id.clone(), fleet.clone());
         Ok(fleet)
     }
 
     pub fn add_ship(&self, dto: AddShipDto, _user: String) -> Result<(), ()> {
-        let mut map = self.fleets.lock().unwrap();
+        let mut map = self.fleets.lock().map_err(|_| ())?;
         if let Some(fleet) = map.get_mut(&dto.fleet_id) {
             fleet.ship_count += 1;
             fleet.total_crew += dto.crew_size as usize;
@@ -134,7 +135,7 @@ impl ApplicationService {
     }
 
     pub fn get_fleet(&self, id: &str) -> Result<Fleet, ()> {
-        let map = self.fleets.lock().unwrap();
+        let map = self.fleets.lock().map_err(|_| ())?;
         map.get(id).cloned().ok_or(())
     }
 
@@ -151,12 +152,13 @@ impl ApplicationService {
             status: "draft".to_string(),
             participant_count: 0,
         };
-        self.ops.lock().unwrap().insert(id.clone(), op.clone());
+        let mut guard = self.ops.lock().map_err(|_| ())?;
+        guard.insert(id.clone(), op.clone());
         Ok(op)
     }
 
     pub fn add_participant(&self, dto: AddParticipantDto, _user: String) -> Result<(), ()> {
-        let mut map = self.ops.lock().unwrap();
+        let mut map = self.ops.lock().map_err(|_| ())?;
         if let Some(op) = map.get_mut(&dto.operation_id) {
             op.participant_count += 1;
             Ok(())
@@ -166,7 +168,7 @@ impl ApplicationService {
     }
 
     pub fn start_operation(&self, id: String, _user: String) -> Result<(), ()> {
-        let mut map = self.ops.lock().unwrap();
+        let mut map = self.ops.lock().map_err(|_| ())?;
         if let Some(op) = map.get_mut(&id) {
             op.status = "in_progress".to_string();
             Ok(())
@@ -176,7 +178,7 @@ impl ApplicationService {
     }
 
     pub fn get_operation(&self, id: &str) -> Result<Operation, ()> {
-        let map = self.ops.lock().unwrap();
+        let map = self.ops.lock().map_err(|_| ())?;
         map.get(id).cloned().ok_or(())
     }
 }

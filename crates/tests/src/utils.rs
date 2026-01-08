@@ -2,11 +2,14 @@ use tempfile::TempDir;
 
 /// Create test storage placeholder (ApplicationService does not need external storage in tests)
 pub fn create_test_storage() -> TempDir {
-    TempDir::new().expect("Failed to create temp dir")
+    match TempDir::new() {
+        Ok(t) => t,
+        Err(e) => panic!("Failed to create temp dir: {}", e),
+    }
 }
 
 /// Create test audit placeholder
-pub fn create_test_audit() -> () {
+pub fn create_test_audit() {
     // placeholder for future integration with real audit
 }
 
