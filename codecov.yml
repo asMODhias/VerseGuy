@@ -1,0 +1,10 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 70
+
+# Disable comments by default; keep uploads quiet unless configured
+comment:
+  layout: none
+  behavior: off
