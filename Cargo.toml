@@ -30,6 +30,7 @@ members = [
     "crates/domain/fleet",
     "crates/domain/operations",
     "crates/domain/application",
+    "crates/domain/teil13",
     "crates/migrations",
 ]
 

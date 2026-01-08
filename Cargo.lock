@@ -5915,6 +5915,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "verseguy-domain-teil13"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "serde",
+ "tempfile",
+ "tokio",
+ "uuid",
+ "verseguy_storage",
+]
+
+[[package]]
 name = "verseguy_audit"
 version = "0.1.0"
 dependencies = [
