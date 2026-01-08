@@ -17,16 +17,17 @@ fn benchmark_create_organization(c: &mut Criterion) {
 
 fn benchmark_add_member(c: &mut Criterion) {
     let svc = ApplicationService::new();
-    let org = svc
-        .create_organization(
-            CreateOrganizationDto {
-                name: "Org".to_string(),
-                tag: "TST".to_string(),
-                description: "D".to_string(),
-            },
-            "u".to_string(),
-        )
-        .unwrap();
+    let org = match svc.create_organization(
+        CreateOrganizationDto {
+            name: "Org".to_string(),
+            tag: "TST".to_string(),
+            description: "D".to_string(),
+        },
+        "u".to_string(),
+    ) {
+        Ok(o) => o,
+        Err(e) => panic!("create_organization returned Err: {:?}", e),
+    };
     c.bench_function("add_member", |b| {
         let mut i = 0usize;
         b.iter(|| {
