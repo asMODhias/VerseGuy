@@ -80,6 +80,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
                 .patch(routes::apps_update_handler)
                 .delete(routes::apps_delete_handler),
         )
+        // TEIL 13 routes removed by request
         .route("/admin/keys", get(routes::admin_get_keys))
         .route("/admin/keys/rotate", post(routes::admin_rotate_key))
         .route("/admin/keys/import", post(routes::admin_import_key))

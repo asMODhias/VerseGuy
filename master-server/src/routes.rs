@@ -6,6 +6,8 @@ use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use verseguy_auth::local::LocalAuth;
+
+// TEIL 13 handlers removed per user request
 use verseguy_auth::SessionService;
 use verseguy_licensing::validate_license;
 
