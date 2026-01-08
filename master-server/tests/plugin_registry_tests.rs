@@ -1,5 +1,5 @@
 #![allow(clippy::disallowed_methods)]
-use axum::http::{Method, Request, Response};
+use axum::http::{Method, Request, Response, StatusCode};
 use master_server::build_app;
 use master_server::state::AppState;
 use serde_json::Value;
@@ -29,7 +29,7 @@ async fn publish_and_search_plugin() {
     );
 
     let resp: Response<axum::body::Body> = must(app.clone().oneshot(req).await);
-    assert_eq!(resp.status().as_u16(), 201);
+    assert_eq!(resp.status(), StatusCode::CREATED);
 
     // Search
     let req: Request<axum::body::Body> = must(

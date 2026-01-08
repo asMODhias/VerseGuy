@@ -1,7 +1,7 @@
 use master_server::build_app;
 use std::sync::Arc;
 use tower::util::ServiceExt;
-use axum::http::{Method, Request, Response};
+use axum::http::{Method, Request, Response, StatusCode};
 use tempfile::TempDir;
 use verseguy_test_utils::{must, must_opt};
 
@@ -26,7 +26,7 @@ async fn publish_requires_plugin_token_when_set() {
             .body(axum::body::Body::from(manifest_body.to_string())),
     );
     let resp: Response<axum::body::Body> = must(app.clone().oneshot(req).await);
-    assert_eq!(resp.status().as_u16(), 403);
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
 
     // with wrong token -> forbidden
     let req: Request<axum::body::Body> = must(
@@ -38,7 +38,7 @@ async fn publish_requires_plugin_token_when_set() {
             .body(axum::body::Body::from(manifest_body.to_string())),
     );
     let resp: Response<axum::body::Body> = must(app.clone().oneshot(req).await);
-    assert_eq!(resp.status().as_u16(), 403);
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
 
     // with correct token -> created
     let req: Request<axum::body::Body> = must(
@@ -50,5 +50,5 @@ async fn publish_requires_plugin_token_when_set() {
             .body(axum::body::Body::from(manifest_body.to_string())),
     );
     let resp: Response<axum::body::Body> = must(app.clone().oneshot(req).await);
-    assert_eq!(resp.status().as_u16(), 201);
+    assert_eq!(resp.status(), StatusCode::CREATED);
 }

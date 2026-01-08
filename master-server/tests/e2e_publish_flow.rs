@@ -1,5 +1,5 @@
 #![allow(clippy::disallowed_methods)]
-use axum::http::{Method, Request, Response};
+use axum::http::{Method, Request, Response, StatusCode};
 use master_server::build_app;
 use master_server::plugins::verify_manifest;
 use master_server::state::AppState;
@@ -59,7 +59,7 @@ async fn register_login_publish_verify() {
     );
 
     let resp: Response<axum::body::Body> = must(app.clone().oneshot(req).await);
-    assert_eq!(resp.status().as_u16(), 201);
+    assert_eq!(resp.status(), StatusCode::CREATED);
 
     // Search and verify
     let req: Request<axum::body::Body> = must(
