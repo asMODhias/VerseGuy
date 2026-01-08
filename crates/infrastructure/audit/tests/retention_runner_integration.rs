@@ -30,16 +30,24 @@ fn retention_runner_dry_run_detects_old_events() -> verseguy_storage_infra::prel
     drop(engine);
 
     // Build the retention_runner binary (ensures target exists)
-    let build_status = Command::new("cargo")
-        .args(["build", "-p", "verseguy_audit_infra", "--bin", "retention_runner"])
+    let build_status = match Command::new("cargo")
+        .args(["build", "-p", "verseguy_audit_infra", "--bin", "retention_runner"]) 
         .status()
-        .expect("failed to run cargo build");
+    {
+        Ok(s) => s,
+        Err(e) => panic!("failed to run cargo build: {}", e),
+    };
     assert!(build_status.success());
+
 
     // Execute the binary with --dry-run
     // Prefer the CARGO_BIN_EXE_retention_runner env var if set (Cargo provides it during `cargo test`), else fall back to target/debug path.
     // Use `cargo run` to execute the binary reliably across platforms (slower but robust in CI)
-    let output = Command::new("cargo")
+    let db_path_str = match db_path.to_str() {
+        Some(s) => s,
+        None => panic!("db_path is not valid UTF-8: {:?}", db_path),
+    };
+    let output = match Command::new("cargo")
         .args([
             "run",
             "-p",
@@ -48,13 +56,16 @@ fn retention_runner_dry_run_detects_old_events() -> verseguy_storage_infra::prel
             "retention_runner",
             "--",
             "--db-path",
-            db_path.to_str().unwrap(),
+            db_path_str,
             "--days",
             "1",
             "--dry-run",
         ])
         .output()
-        .expect("failed to execute cargo run for retention_runner");
+    {
+        Ok(o) => o,
+        Err(e) => panic!("failed to execute cargo run for retention_runner: {}", e),
+    };
 
     assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = std::str::from_utf8(&output.stdout).unwrap_or_default();
