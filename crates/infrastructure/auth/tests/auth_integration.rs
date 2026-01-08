@@ -25,7 +25,11 @@ fn auth_storage_and_session_flow() -> Result<()> {
 
     repo.create_user(&mut user)?;
 
-    let loaded = repo.get_user_by_id(&user.id)?.expect("user created");
+    let loaded = repo.get_user_by_id(&user.id)?;
+    let loaded = match loaded {
+        Some(u) => u,
+        None => panic!("user created"),
+    };
     assert_eq!(loaded.username, "integration_user");
 
     // create session
@@ -38,7 +42,11 @@ fn auth_storage_and_session_flow() -> Result<()> {
     };
 
     store.create_session(&mut s)?;
-    let got = store.get_session(&s.id)?.expect("session exists");
+    let got = store.get_session(&s.id)?;
+    let got = match got {
+        Some(g) => g,
+        None => panic!("session exists"),
+    };
     assert_eq!(got.user_id, s.user_id);
 
     store.revoke_session(&s.id)?;
@@ -70,7 +78,10 @@ fn oauth_token_exchange_mocked() -> Result<()> {
     );
 
     let provider = oauth::provider::OAuthClient::new(client);
-    let token = provider.exchange_code("code").expect("token exchange");
+    let token = match provider.exchange_code("code") {
+        Ok(t) => t,
+        Err(e) => panic!("token exchange: {:?}", e),
+    };
 
     assert!(token.contains("mocked-token") || token == "mocked-token");
     Ok(())

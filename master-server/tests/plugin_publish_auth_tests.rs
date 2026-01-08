@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods)]
 use master_server::build_app;
 use std::sync::Arc;
 use tower::util::ServiceExt;

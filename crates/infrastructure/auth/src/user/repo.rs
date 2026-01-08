@@ -58,10 +58,18 @@ mod tests {
         };
 
         repo.create_user(&mut user)?;
-        let loaded = repo.get_user_by_id(&user.id)?.expect("user exists");
+        let loaded = repo.get_user_by_id(&user.id)?;
+        let loaded = match loaded {
+            Some(u) => u,
+            None => panic!("user exists"),
+        };
         assert_eq!(loaded.username, "bob");
 
-        let by_name = repo.get_user_by_username("bob")?.expect("found by username");
+        let by_name = repo.get_user_by_username("bob")?;
+        let by_name = match by_name {
+            Some(b) => b,
+            None => panic!("found by username"),
+        };
         assert_eq!(by_name.email, "bob@example.com");
 
         repo.delete_user(&user.id)?;

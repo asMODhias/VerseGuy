@@ -54,7 +54,11 @@ mod tests {
         };
 
         store.create_session(&mut s)?;
-        let loaded = store.get_session(&s.id)?.expect("session exists");
+        let loaded = store.get_session(&s.id)?;
+        let loaded = match loaded {
+            Some(l) => l,
+            None => panic!("session exists"),
+        };
         assert_eq!(loaded.user_id, s.user_id);
 
         store.revoke_session(&s.id)?;

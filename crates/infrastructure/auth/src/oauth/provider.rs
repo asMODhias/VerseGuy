@@ -29,11 +29,19 @@ mod tests {
 
     #[test]
     fn client_constructs() {
+        let auth_url = match AuthUrl::new("https://example.com/auth".to_string()) {
+            Ok(u) => u,
+            Err(e) => panic!("auth url parse: {:?}", e),
+        };
+        let token_url = match TokenUrl::new("https://example.com/token".to_string()) {
+            Ok(u) => u,
+            Err(e) => panic!("token url parse: {:?}", e),
+        };
         let client = BasicClient::new(
             ClientId::new("id".to_string()),
             Some(ClientSecret::new("secret".to_string())),
-            AuthUrl::new("https://example.com/auth".to_string()).unwrap(),
-            Some(TokenUrl::new("https://example.com/token".to_string()).unwrap()),
+            auth_url,
+            Some(token_url),
         );
 
         let c = OAuthClient::new(client);
