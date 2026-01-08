@@ -41,6 +41,38 @@ Gefundene Vorkommen (Auszug):
 - Höherer Aufwand / manuell:
   - Calls to library constructors that `unwrap()` a fallible result (e.g., `noise::Config::new(...).unwrap()`) — better to change function signatures to return `Result` and propagate errors to callers; may need additional refactors and tests.
 
+### Async-Tests & Tokio-Runtime (Hinweis) ⚠️
+Beim Verwenden von `#[tokio::test]` erzeugt das Macro intern einen Runtime-Build mit `expect(...)` (z. B. `Runtime::Builder::new_current_thread().build().expect(...)`). Wenn die CI streng `clippy::disallowed_methods` durchsetzt, kann die Macro-Expansion zu einem `Result::expect`-Diagnostic führen, das auf die Testzeile zeigt.
+
+**Empfehlung:** Vermeide `#[tokio::test]` in lint-empfindlichen Tests; konstruiere die Tokio-Runtime manuell und handhabe Fehler ohne `.expect()`.
+
+Beispiel — statt:
+
+```rust
+#[tokio::test]
+async fn foo() {
+    // ... async test body
+}
+```
+
+empfohlen:
+
+```rust
+#[test]
+fn foo() {
+    let rt = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+        Ok(rt) => rt,
+        Err(e) => panic!("failed to build runtime: {}", e),
+    };
+
+    rt.block_on(async {
+        // ... async test body
+    });
+}
+```
+
+Diese Änderung ist eine pragmatische Maßnahme, bis betroffene Bibliotheken oder Test-Setups refaktoriert sind.
+
 ## Vorschlag für die nächsten Schritte
 1. Erzeuge einen PR mit sicheren, nicht-invasive Fixes:
    - Convert `unwrap()` in `tests/` → `expect("...")` with explanatory message.

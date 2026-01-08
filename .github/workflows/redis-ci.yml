@@ -1,0 +1,47 @@
+name: CI - Redis Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  redis-tests:
+    name: Run tests with Redis
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: clippy, rustfmt
+
+      - name: Wait for Redis to be ready
+        run: |
+          for i in {1..20}; do
+            if nc -z localhost 6379; then
+              echo "Redis ready"; break;
+            fi
+            echo "Waiting for Redis..."; sleep 1;
+          done
+
+      - name: Run verseguy-api tests (with Redis)
+        env:
+          VERSEGUY_API_TOKEN_STORE: redis
+          VERSEGUY_API_TOKEN_STORE_URL: redis://127.0.0.1/
+        run: |
+          cargo test -p verseguy-api

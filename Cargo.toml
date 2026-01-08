@@ -27,6 +27,7 @@ members = [
     "crates/infrastructure/licensing",
     "crates/infrastructure/audit",
     "crates/migrations",
+    "crates/api",
 ]
 
 [workspace.package]

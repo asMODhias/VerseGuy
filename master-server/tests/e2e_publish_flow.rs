@@ -8,9 +8,18 @@ use std::sync::Arc;
 use tower::util::ServiceExt;
 use verseguy_test_utils::{must, must_opt};
 
-#[tokio::test]
-async fn register_login_publish_verify() {
-    let dir = must(tempfile::tempdir());
+#[test]
+fn register_login_publish_verify() {
+    let rt = match tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(rt) => rt,
+        Err(e) => panic!("failed to build runtime: {}", e),
+    };
+
+    rt.block_on(async {
+        let dir = must(tempfile::tempdir());
     let db_path = must_opt(dir.path().to_str(), "tempdir path not utf8").to_string();
     // create appstate with keypair (MASTER_KEY_FILE not necessary; AppState::new generates keypair internally)
     let state = Arc::new(must(AppState::new(db_path, b"secret".to_vec())));
@@ -81,4 +90,5 @@ async fn register_login_publish_verify() {
     let pubkey = must_opt(state.keypair.as_ref(), "missing keypair").public;
     let ok = must(verify_manifest(&state.storage, &manifest, &pubkey));
     assert!(ok);
+    });
 }

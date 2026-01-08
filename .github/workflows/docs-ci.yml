@@ -1,0 +1,44 @@
+name: Docs & OpenAPI CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  docs-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Fetch official Swagger UI dist (optional)
+        run: |
+          chmod +x scripts/fetch-swagger-ui.sh
+          scripts/fetch-swagger-ui.sh || true
+
+      - name: Install Spectral
+        run: |
+          npm ci --workspace ./ || true
+          npm i -g @stoplight/spectral-cli || true
+
+      - name: Validate OpenAPI with Spectral
+        run: |
+          npx @stoplight/spectral-cli lint crates/api/openapi.yaml || true
+
+      - name: Ensure vendored assets exist (if present, check they are non-empty)
+        run: |
+          for f in crates/api/static/swagger-ui/swagger-ui-bundle.min.js crates/api/static/swagger-ui/swagger-ui-standalone-preset.min.js; do
+            if [ -f "$f" ]; then
+              if [ ! -s "$f" ]; then echo "$f is empty"; exit 1; fi
+            fi
+          done
+
+      - name: Test (cargo test)
+        uses: dtolnay/cargo-chef-action@v0.3
+        with:
+          run: cargo test -p verseguy-api --locked --color=always

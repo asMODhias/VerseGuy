@@ -1,12 +1,11 @@
 // Local patch of libp2p-tls certificate generation to be compatible with newer rcgen API
 
 use libp2p_identity as identity;
-use x509_parser::{prelude::*, signature_algorithm::SignatureAlgorithm};
+use x509_parser::prelude::*;
 use yasna::{self, DERWriter, DERWriterSeq};
 use rcgen::PublicKeyData;
 use libp2p_identity::PeerId;
 
-use std::sync::Arc;
 
 use crate::GenError;
 
@@ -69,7 +68,7 @@ fn make_libp2p_extension(
         });
     });
 
-    Ok(rcgen::CustomExtension::from_oid_content(&P2P_EXT_OID, signed_key))
+    Ok(rcgen::CustomExtension::from_oid_content(P2P_EXT_OID, signed_key))
 }
 
 // A minimal P2P-specific certificate view.
@@ -82,7 +81,7 @@ pub struct P2PCertificate {
 
 impl P2PCertificate {
     pub fn peer_id(&self) -> PeerId {
-        self.peer.clone().unwrap_or_else(|| PeerId::random())
+        self.peer.unwrap_or_else(PeerId::random)
     }
 }
 
@@ -104,7 +103,7 @@ pub fn parse_certificate_peerid<C: AsRef<[u8]>>(end_entity: &C) -> Result<P2PCer
             let ext_der = ext.value;
 
             // Parse the ext_der -> sequence { spki DER, signature OCTET STRING }
-            let parsed = yasna::parse_der(&ext_der, |reader| {
+            let parsed = yasna::parse_der(ext_der, |reader| {
                 reader.read_sequence(|reader| {
                     let spki = reader.next().read_der()?;
                     let sig = reader.next().read_bytes()?;

@@ -13107,7 +13107,9 @@ Verbleibend: 3 Teile (~2,000 Zeilen)
 Aktuell: 12,622 / ~15,000 Zeilen (84%)
 ```
 
-**Soll ich mit TEIL 13 (API & UI Integration) weitermachen?** 🌐
+**Status: Ich beginne mit der Implementierung von TEIL 13 (API & UI Integration).** 🌐
+
+> Hinweise: erstes Ergebnis: ein neues Crate `crates/api` wurde angelegt mit minimalen Endpunkten `/health` und `/metrics` und einem Test. Weitere Implementierungsphasen folgen gemäß Plan.
 
 # 🌐 TEIL 13: API & UI INTEGRATION
 
@@ -13146,6 +13148,12 @@ tokio = { workspace = true, features = ["full"] }
 # Utilities
 tracing = { workspace = true }
 metrics = { workspace = true }
+
+**Persistent token store:** The API supports an optional persistent token store (Sled) to persist refresh tokens across restarts. To enable it, set the environment variable `VERSEGUY_API_TOKEN_STORE=sled` before running the API. See `crates/api/README.md` and `crates/api/tests/sled_persistence.rs` for details.
+
+**Redis support:** There is also a Redis adapter available. Set `VERSEGUY_API_TOKEN_STORE=redis` and optionally `VERSEGUY_API_TOKEN_STORE_URL` to use Redis as the persistent backend. Integration tests for Redis will be skipped if Redis is not reachable.
+
+**OpenAPI & Docs UI:** The API exposes an embedded OpenAPI YAML at `GET /openapi.yaml` and a small Swagger UI at `GET /docs` which loads the spec from `/openapi.yaml`. The spec includes OAuth2 security schemes (Authorization Code + Client Credentials) and documents the `/protected` endpoint as secured (scope `read`). This provides a quick, interactive documentation surface for TEIL 13.
 ```
 
 ```rust
@@ -14126,6 +14134,8 @@ Completed:
   ✅ API documentation
   ✅ Frontend integration guide
      - TypeScript types
+  ✅ Initial API crate scaffolded (`crates/api`) with basic endpoints: `/health`, `/metrics`, `/protected` and automated tests
+  ✅ OAuth token endpoint (`POST /oauth/token`) implemented (client_credentials grant, demo client) with tests
      - API client
      - React examples
 

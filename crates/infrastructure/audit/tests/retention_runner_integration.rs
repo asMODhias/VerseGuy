@@ -10,7 +10,11 @@ fn retention_runner_dry_run_detects_old_events() -> verseguy_storage_infra::prel
     // Setup DB with one old event
     let td = TempDir::new()?;
     let db_path = td.path().join("audit_runner_db");
-    let cfg = StorageConfig { path: db_path.clone(), encryption_enabled: false, ..Default::default() };
+    let cfg = StorageConfig {
+        path: db_path.clone(),
+        encryption_enabled: false,
+        ..Default::default()
+    };
     let engine = std::sync::Arc::new(StorageEngine::open(cfg)?);
     let store = AuditStore::new(engine.clone());
 
@@ -31,14 +35,19 @@ fn retention_runner_dry_run_detects_old_events() -> verseguy_storage_infra::prel
 
     // Build the retention_runner binary (ensures target exists)
     let build_status = match Command::new("cargo")
-        .args(["build", "-p", "verseguy_audit_infra", "--bin", "retention_runner"]) 
+        .args([
+            "build",
+            "-p",
+            "verseguy_audit_infra",
+            "--bin",
+            "retention_runner",
+        ])
         .status()
     {
         Ok(s) => s,
         Err(e) => panic!("failed to run cargo build: {}", e),
     };
     assert!(build_status.success());
-
 
     // Execute the binary with --dry-run
     // Prefer the CARGO_BIN_EXE_retention_runner env var if set (Cargo provides it during `cargo test`), else fall back to target/debug path.
@@ -67,14 +76,20 @@ fn retention_runner_dry_run_detects_old_events() -> verseguy_storage_infra::prel
         Err(e) => panic!("failed to execute cargo run for retention_runner: {}", e),
     };
 
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
-    let stdout = std::str::from_utf8(&output.stdout).unwrap_or_default();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     assert!(output.status.success());
     let stdout = str::from_utf8(&output.stdout).unwrap_or_default();
 
     // Expect message indicating it would delete 1 event
-    assert!(stdout.contains("Dry-run: would delete 1 events") || stdout.contains("would delete 1 events"));
+    assert!(
+        stdout.contains("Dry-run: would delete 1 events")
+            || stdout.contains("would delete 1 events")
+    );
 
     Ok(())
 }

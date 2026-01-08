@@ -2,19 +2,29 @@ use crate::engine::StorageEngine;
 use crate::prelude::*;
 
 /// Simple Migration struct: version and an apply function
+type MigrationApply = Box<dyn Fn(&StorageEngine) -> AppResult<()>>;
+
 pub struct Migration {
     pub version: u32,
     pub description: &'static str,
-    pub apply: Box<dyn Fn(&StorageEngine) -> AppResult<()>>,
+    pub apply: MigrationApply,
 }
 
 pub struct MigrationManager {
     migrations: Vec<Migration>,
 }
 
+impl Default for MigrationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MigrationManager {
     pub fn new() -> Self {
-        Self { migrations: Vec::new() }
+        Self {
+            migrations: Vec::new(),
+        }
     }
 
     pub fn register<F>(&mut self, version: u32, description: &'static str, f: F)
