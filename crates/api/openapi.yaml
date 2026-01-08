@@ -64,24 +64,35 @@ paths:
   /oauth/token:
     post:
       summary: Token endpoint
+      description: |
+        Token endpoint supporting multiple grant types: client_credentials, refresh_token and authorization_code.
       requestBody:
+        required: true
         content:
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              properties:
-                grant_type:
-                  type: string
-                client_id:
-                  type: string
-                client_secret:
-                  type: string
-                refresh_token:
-                  type: string
-                code:
-                  type: string
-                redirect_uri:
-                  type: string
+              oneOf:
+                - $ref: '#/components/schemas/TokenRequestClientCredentials'
+                - $ref: '#/components/schemas/TokenRequestRefresh'
+                - $ref: '#/components/schemas/TokenRequestAuthorizationCode'
+            examples:
+              client_credentials_form:
+                summary: client credentials form example
+                value:
+                  grant_type: client_credentials
+                  client_id: client-id
+                  client_secret: secret
+              refresh_token_form:
+                summary: refresh token form example
+                value:
+                  grant_type: refresh_token
+                  refresh_token: r-456
+              authorization_code_form:
+                summary: authorization code form example
+                value:
+                  grant_type: authorization_code
+                  code: abc123
+                  redirect_uri: "http://localhost:3000/callback"
       responses:
         '200':
           description: Token response
@@ -153,3 +164,38 @@ components:
         scope:
           type: string
           description: Scopes granted by the token
+
+    TokenRequestClientCredentials:
+      type: object
+      required: [grant_type, client_id, client_secret]
+      properties:
+        grant_type:
+          type: string
+          enum: [client_credentials]
+        client_id:
+          type: string
+        client_secret:
+          type: string
+
+    TokenRequestRefresh:
+      type: object
+      required: [grant_type, refresh_token]
+      properties:
+        grant_type:
+          type: string
+          enum: [refresh_token]
+        refresh_token:
+          type: string
+
+    TokenRequestAuthorizationCode:
+      type: object
+      required: [grant_type, code, redirect_uri]
+      properties:
+        grant_type:
+          type: string
+          enum: [authorization_code]
+        code:
+          type: string
+        redirect_uri:
+          type: string
+          format: uri

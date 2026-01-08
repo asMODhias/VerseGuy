@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>OAuth Callback</title>
+  </head>
+  <body>
+    <div id="message">Processing...</div>
+    <script>
+      (function () {
+        // parse query params
+        function qmap() {
+          const q = window.location.search.substring(1);
+          const pairs = q.split('&').filter(Boolean);
+          const out = {};
+          pairs.forEach(p => {
+            const [k,v] = p.split('=');
+            try { out[decodeURIComponent(k)] = decodeURIComponent(v || ''); } catch(e) { out[k]=v; }
+          });
+          return out;
+        }
+        const m = qmap();
+        const msg = { type: 'oauth_code', code: m.code || null, state: m.state || null };
+        try {
+          if (window.opener && window.opener.postMessage) {
+            window.opener.postMessage(msg, window.location.origin || '*');
+            document.getElementById('message').textContent = 'Authorization complete; you can close this window.';
+          } else {
+            // write the message to the page so manual copy is possible
+            document.getElementById('message').textContent = 'Authorization code: ' + (m.code || '') + '\nState: ' + (m.state || '');
+          }
+        } catch (e) {
+          document.getElementById('message').textContent = 'Error posting message: ' + e.message;
+        }
+      })();
+    </script>
+  </body>
+</html>
