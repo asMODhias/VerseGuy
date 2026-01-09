@@ -2,6 +2,7 @@ use plugins_base_organization::service::OrganizationService;
 use plugins_base_organization::types::{Member, Organization};
 use tempfile::TempDir;
 use verseguy_storage::Storage;
+use verseguy_storage::schema::keys;
 
 #[test]
 fn test_create_get_delete_org() {
@@ -235,4 +236,89 @@ fn test_has_permission_checks_ranks() {
     let has =
         verseguy_test_utils::must(svc.has_permission("user1", Permission::ManageOrganization));
     assert!(has);
+}
+
+#[test]
+fn test_update_org_changes_name_and_description() {
+    let tmp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(Storage::open(tmp.path()));
+    let svc = OrganizationService::new(storage.clone());
+
+    let org = verseguy_test_utils::must(svc.create_organization(
+        "OldName".into(),
+        "ON".into(),
+        "d".into(),
+        "owner".into(),
+    ));
+
+    let updated = verseguy_test_utils::must(svc.update_organization(
+        &org.id,
+        Some("NewName".into()),
+        None,
+        Some("newdesc".into()),
+    ));
+
+    assert_eq!(updated.name, "NewName");
+    assert_eq!(updated.description, "newdesc");
+
+    // name index points to same id
+    let id_opt: Option<String> =
+        verseguy_test_utils::must(storage.get(keys::organization_by_name("NewName")));
+    let id_val = match id_opt {
+        Some(v) => v,
+        None => panic!("Expected name index to point to id"),
+    };
+    assert_eq!(id_val, org.id);
+}
+
+#[test]
+fn test_update_org_name_conflict_rejected() {
+    let tmp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(Storage::open(tmp.path()));
+    let svc = OrganizationService::new(storage.clone());
+
+    let _a = verseguy_test_utils::must(svc.create_organization(
+        "AlphaOrg".into(),
+        "A1".into(),
+        "d".into(),
+        "o".into(),
+    ));
+    let b = verseguy_test_utils::must(svc.create_organization(
+        "BetaOrg".into(),
+        "B1".into(),
+        "d".into(),
+        "o".into(),
+    ));
+
+    let res = svc.update_organization(&b.id, Some("AlphaOrg".into()), None, None);
+    assert!(res.is_err());
+}
+
+#[test]
+fn test_list_orgs_paged_returns_non_overlapping_slices() {
+    let tmp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(Storage::open(tmp.path()));
+    let svc = OrganizationService::new(storage.clone());
+
+    // create 5 orgs
+    for i in 0..5 {
+        let name = format!("Org{}", i);
+        verseguy_test_utils::must(svc.create_organization(
+            name,
+            format!("T{}", i),
+            "d".into(),
+            "o".into(),
+        ));
+    }
+
+    let p1 = verseguy_test_utils::must(svc.list_orgs_page(0, 2));
+    let p2 = verseguy_test_utils::must(svc.list_orgs_page(2, 2));
+
+    assert_eq!(p1.len(), 2);
+    assert_eq!(p2.len(), 2);
+
+    let ids1: std::collections::HashSet<String> = p1.into_iter().map(|o| o.id).collect();
+    let ids2: std::collections::HashSet<String> = p2.into_iter().map(|o| o.id).collect();
+
+    assert!(ids1.is_disjoint(&ids2));
 }

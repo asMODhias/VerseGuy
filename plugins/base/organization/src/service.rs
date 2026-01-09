@@ -87,6 +87,70 @@ impl OrganizationService {
         Ok(())
     }
 
+    /// Update organization fields (name, tag, description). Will preserve indexes and enforce name uniqueness.
+    pub fn update_organization(
+        &self,
+        id: &str,
+        new_name: Option<String>,
+        new_tag: Option<String>,
+        new_description: Option<String>,
+    ) -> Result<Organization> {
+        let org_opt: Option<Organization> = self
+            .storage
+            .get(keys::organization(id))
+            .context("Failed to load organization")?;
+        let mut org = org_opt.ok_or_else(|| anyhow::anyhow!("Organization not found"))?;
+
+        // If name is changing, ensure uniqueness and update name index
+        if let Some(name) = new_name
+            && name != org.name
+        {
+            let existing: Option<String> = self.storage.get(keys::organization_by_name(&name))?;
+            if let Some(existing_id) = existing
+                && existing_id != org.id
+            {
+                anyhow::bail!("Organization name already exists");
+            }
+            // remove old name index and add new one
+            self.storage
+                .delete(keys::organization_by_name(&org.name))
+                .context("Failed to delete old name index")?;
+            self.storage
+                .put(keys::organization_by_name(&name), &org.id)
+                .context("Failed to save name index")?;
+            org.name = name;
+        }
+
+        if let Some(tag) = new_tag {
+            org.tag = tag;
+        }
+        if let Some(desc) = new_description {
+            org.description = desc;
+        }
+
+        org.updated_at = Utc::now();
+
+        self.storage
+            .put(keys::organization(id), &org)
+            .context("Failed to save org")?;
+
+        Ok(org)
+    }
+
+    /// Return a page of organizations (offset, limit) using the organization key space.
+    pub fn list_orgs_page(&self, offset: usize, limit: usize) -> Result<Vec<Organization>> {
+        let all: Vec<Organization> = self
+            .storage
+            .prefix_scan(keys::organization(""))
+            .context("Failed to list organizations")?;
+        // simple slice-based pagination
+        if offset >= all.len() {
+            return Ok(vec![]);
+        }
+        let end = (offset + limit).min(all.len());
+        Ok(all[offset..end].to_vec())
+    }
+
     pub fn add_member(&self, member: Member) -> Result<()> {
         // Validate
         if member.handle.len() < 3 {

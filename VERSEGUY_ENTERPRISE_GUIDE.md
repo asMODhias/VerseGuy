@@ -14942,7 +14942,7 @@ comment:
 Completed:
   ✅ Test infrastructure
   ✅ Integration tests (partial)
-     - Organization (7 integration tests; + 8 plugin/unit tests)
+     - Organization (7 integration tests; + 11 plugin/unit tests)
      - Fleet (2 integration tests)
      - Operations (2 integration tests)
   ✅ Test utilities
@@ -14954,7 +14954,7 @@ Completed:
      - Coverage (80% target)
 
 Test Coverage:
-  Organization: 7 integration tests (+8 plugin/unit tests)
+  Organization: 7 integration tests (+11 plugin/unit tests)
   Fleet: 2 integration tests
   Operations: 2 integration tests
   Total: 11 integration tests (plus plugin/unit tests)
