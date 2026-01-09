@@ -28,6 +28,8 @@ members = [
     "crates/infrastructure/audit",
     "crates/migrations",
     "crates/api",
+    "crates/application",
+    "crates/tests",
 ]
 
 [workspace.package]
@@ -44,7 +46,7 @@ async-trait = "0.1"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde_json = "1.0.149"
 toml = "0.8"
 
 # Error Handling
@@ -64,6 +66,9 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 # Database
 rocksdb = "0.21"
 
+# Benchmarking
+criterion = "0.4"
+
 # Metrics
 metrics = "0.21"
 metrics-exporter-prometheus = "0.13"
@@ -79,12 +84,12 @@ aes-gcm = "0.10"
 ring = "0.17.14"
 
 # Networking
-libp2p = { version = "0.53.2", features = ["tcp", "quic", "mdns", "kad", "gossipsub", "noise", "yamux"] }
-libp2p-core = "0.42.0"
-libp2p-swarm = "0.45.1"
-libp2p-mdns = "0.46.0"
-libp2p-gossipsub = "0.46.1"
-libp2p-tcp = "0.41.0"
+libp2p = { version = "0.57.0", features = ["tcp", "quic", "mdns", "kad", "gossipsub", "noise", "yamux"] }
+libp2p-core = "0.43.2"
+libp2p-swarm = "0.48.0"
+libp2p-mdns = "0.48.0"
+libp2p-gossipsub = "0.49.2"
+libp2p-tcp = "0.44.0"
 reqwest = { version = "0.11", features = ["json", "cookies"] }
 
 # HTML Parsing
@@ -110,5 +115,14 @@ panic = "abort"
 # Temporary local patch to test bumping ring via a patched rcgen fork. Remove this after upstream rcgen ships a release that resolves the advisory.
 rcgen = { path = "patches/rcgen/rcgen" }
 libp2p-tls = { path = "patches/libp2p-tls" }
+# Use local lru shim to replace older v0.12.x versions transitively pulled in
+# by libp2p-swarm until we can perform a cleaner family upgrade or upstream fix.
+lru = { path = "patches/lru" }
+libp2p-swarm = { path = "patches/libp2p-swarm" }
+# (Previously attempted) Use the libp2p git sources for swarm to get a newer dependency set
+# Removed to avoid mixing git and crates.io versions which caused multiple
+# `libp2p_core` versions and compilation errors. We will either upgrade all
+# libp2p subcrates consistently or apply a focused lru patch when available.
+# libp2p-swarm = { git = "https://github.com/libp2p/rust-libp2p", branch = "master", package = "libp2p-swarm" }
 
 

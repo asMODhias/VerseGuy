@@ -33,8 +33,8 @@ mod tests {
 
     use libp2p::swarm::Config as SwarmConfig;
     use libp2p::swarm::SwarmEvent;
-    use libp2p::tcp::tokio as tcp_tokio;
     use libp2p::{Swarm, ping};
+    use libp2p_tcp::tokio as tcp_tokio;
     use std::time::Duration;
 
     async fn make_swarm() -> (Swarm<ping::Behaviour>, PeerId) {

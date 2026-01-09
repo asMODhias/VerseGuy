@@ -1,9 +1,11 @@
 [advisories]
 vulnerability = "deny"
-unmaintained = "warn"
+unmaintained = "transitive"
 yanked = "deny"
 notice = "warn"
-ignore = []
+# Temporarily ignore the unsound lru advisory (RUSTSEC-2026-0002) while we align the libp2p family
+# TODO: remove this once the lockfile no longer contains lru v0.12.x
+ignore = ["RUSTSEC-2026-0002"]
 
 [licenses]
 unlicensed = "deny"

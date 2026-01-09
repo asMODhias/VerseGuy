@@ -30,7 +30,7 @@ verseguy_compliance = { path = "../containers/compliance" }
 verseguy_audit = { path = "../containers/audit" }
 verseguy_authorization = { path = "../crates/infrastructure/authorization" }
 sha2 = "0.10"
-hyper = { version = "0.14", features = ["server"] }
+hyper = { version = "1", features = ["server"] }
 
 # Ed25519 for plugin signing
 ed25519-dalek = "2"

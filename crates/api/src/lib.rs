@@ -24,7 +24,7 @@ pub fn build_app_with_store(store: std::sync::Arc<dyn store::TokenStore>) -> Rou
         .route("/oauth/authorize", get(authorize_handler))
         .route("/openapi.yaml", get(openapi_handler))
         .route("/docs", get(docs_handler))
-        .route("/static/*file", get(static_handler))
+        .route("/static/{*file}", get(static_handler))
         .layer(Extension(store))
 }
 

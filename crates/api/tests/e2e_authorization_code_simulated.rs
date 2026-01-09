@@ -1,6 +1,6 @@
 use axum::body::Body;
-use tower::util::ServiceExt;
 use std::collections::HashMap;
+use tower::util::ServiceExt;
 
 #[test]
 fn e2e_authorization_code_simulated_flow() {
@@ -73,7 +73,10 @@ fn e2e_authorization_code_simulated_flow() {
             Ok(j) => j,
             Err(e) => panic!("invalid json response: {}", e),
         };
-        let access = v2.get("access_token").and_then(|a| a.as_str()).map(|s| s.to_string()).expect("access_token missing");
+        let access = match v2.get("access_token").and_then(|a| a.as_str()).map(|s| s.to_string()) {
+            Some(s) => s,
+            None => panic!("access_token missing"),
+        };
 
         // Step 3: access protected resource with Authorization header
         let req_prot = match axum::http::Request::builder()

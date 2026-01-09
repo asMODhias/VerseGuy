@@ -35,6 +35,25 @@ cargo clippy --all-targets --all-features
 - Run a single integration test file: `cargo test --test <test_name> -p <crate>`
 - Run tests with `--nocapture` to see debug prints
 
+## Benchmarks 🔧
+
+Benchmarks use `Criterion` and are run like tests. Two options:
+
+- Run all benchmarks in the workspace:
+
+```bash
+cargo bench
+```
+
+- Run the domain benchmarks only (recommended):
+
+```bash
+cargo bench -p verseguy-application --bench domain_benchmarks
+```
+
+Add `--nocapture` if you want to see verbose output.
+
+
 ## Notes on `unwrap` / `expect`
 
 The project policy discourages `unwrap`/`expect` in production/library code. Use `?` or explicit `Result` handling. CI enforces this via `clippy::unwrap_used` (see `.github/workflows/ci.yml`).

@@ -49,10 +49,11 @@ fn interactive_ui_exposes_oauth_helpers() {
             Ok(r) => r,
             Err(e) => panic!("failed to build request: {}", e),
         };
-        let resp_cb: axum::http::Response<axum::body::Body> = match app.clone().oneshot(req_cb).await {
-            Ok(r) => r,
-            Err(e) => panic!("request failed: {}", e),
-        };
+        let resp_cb: axum::http::Response<axum::body::Body> =
+            match app.clone().oneshot(req_cb).await {
+                Ok(r) => r,
+                Err(e) => panic!("request failed: {}", e),
+            };
         assert_eq!(resp_cb.status(), axum::http::StatusCode::OK);
         let bcb = match axum::body::to_bytes(resp_cb.into_body(), 1024 * 1024).await {
             Ok(b) => b,
