@@ -118,6 +118,7 @@ libp2p-tls = { path = "patches/libp2p-tls" }
 # Use local lru shim to replace older v0.12.x versions transitively pulled in
 # by libp2p-swarm until we can perform a cleaner family upgrade or upstream fix.
 lru = { path = "patches/lru" }
+libp2p-swarm = { path = "patches/libp2p-swarm" }
 # (Previously attempted) Use the libp2p git sources for swarm to get a newer dependency set
 # Removed to avoid mixing git and crates.io versions which caused multiple
 # `libp2p_core` versions and compilation errors. We will either upgrade all
