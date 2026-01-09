@@ -1,0 +1,55 @@
+name: retention-runner-smoke
+
+on:
+  pull_request:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  smoke:
+    name: Build & smoke-run retention_runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libsnappy-dev zlib1g-dev libbz2-dev liblz4-dev libzstd-dev libssl-dev
+
+      - name: Set up Rust (stable)
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Build retention_runner (release)
+        run: cargo build -p verseguy_audit_infra --bin retention_runner --release
+
+      - name: Smoke-run retention_runner (dry-run)
+        run: |
+          mkdir -p smoke_tmp
+          ./target/release/retention_runner --db-path ./smoke_tmp/db --days 1 --dry-run > smoke.out 2> smoke.err || true
+          echo "Smoke run exit status: $?"
+
+      - name: Run lsof check against smoke DB (diagnostics)
+        if: always()
+        run: |
+          sudo apt-get install -y lsof || true
+          mkdir -p diagnostics
+          lsof ./smoke_tmp/db > diagnostics/lsof.txt || true
+
+      - name: Upload smoke logs, diagnostics and binary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retention-runner-smoke
+          path: |
+            smoke.out
+            smoke.err
+            diagnostics/lsof.txt
+            target/release/retention_runner
