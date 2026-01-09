@@ -6156,6 +6156,7 @@ dependencies = [
  "axum 0.8.8",
  "chrono",
  "once_cell",
+ "plugins-base-fleet",
  "redis",
  "reqwest",
  "serde",
@@ -6163,10 +6164,12 @@ dependencies = [
  "serde_urlencoded",
  "serde_yaml",
  "sled",
+ "tempfile",
  "tokio",
  "tower 0.4.13",
  "tracing",
  "uuid",
+ "verseguy_storage",
 ]
 
 [[package]]

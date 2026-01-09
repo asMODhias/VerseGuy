@@ -25,7 +25,113 @@ pub fn build_app_with_store(store: std::sync::Arc<dyn store::TokenStore>) -> Rou
         .route("/openapi.yaml", get(openapi_handler))
         .route("/docs", get(docs_handler))
         .route("/static/{*file}", get(static_handler))
+        // Ship management (Fleet plugin)
+        .route("/ships", post(create_ship_handler))
+        .route("/ships/{owner_id}", get(list_ships_handler))
+        .route(
+            "/ships/{owner_id}/{ship_id}",
+            get(get_ship_handler)
+                .put(update_ship_handler)
+                .delete(delete_ship_handler),
+        )
         .layer(Extension(store))
+}
+
+/// Build app with a provided FleetService instance (useful for tests / injected backends)
+pub fn build_app_with_services(
+    store: std::sync::Arc<dyn store::TokenStore>,
+    fleet: std::sync::Arc<plugins_base_fleet::service::FleetService>,
+) -> Router {
+    use axum::Extension;
+    Router::new()
+        .route("/health", get(health_handler))
+        .route("/metrics", get(metrics_handler))
+        .route("/protected", get(protected_handler))
+        .route("/oauth/token", post(token_handler))
+        .route("/oauth/authorize", get(authorize_handler))
+        .route("/openapi.yaml", get(openapi_handler))
+        .route("/docs", get(docs_handler))
+        .route("/static/{*file}", get(static_handler))
+        // Ship management (Fleet plugin)
+        .route("/ships", post(create_ship_handler))
+        .route("/ships/{owner_id}", get(list_ships_handler))
+        .route(
+            "/ships/{owner_id}/{ship_id}",
+            get(get_ship_handler)
+                .put(update_ship_handler)
+                .delete(delete_ship_handler),
+        )
+        .layer(Extension(store))
+        .layer(Extension(fleet))
+}
+
+use axum::extract::Path;
+use axum::Extension as AxExtension;
+use plugins_base_fleet::service::FleetService;
+use plugins_base_fleet::types::Ship;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct CreateShipDto {
+    owner_id: String,
+    model: String,
+    manufacturer: String,
+}
+
+async fn create_ship_handler(
+    AxExtension(fleet): AxExtension<std::sync::Arc<FleetService>>,
+    Json(payload): Json<CreateShipDto>,
+) -> impl IntoResponse {
+    match fleet.create_ship(payload.owner_id, payload.model, payload.manufacturer) {
+        Ok(ship) => (StatusCode::CREATED, Json(ship)).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "failed").into_response(),
+    }
+}
+
+async fn list_ships_handler(
+    AxExtension(fleet): AxExtension<std::sync::Arc<FleetService>>,
+    Path(owner_id): Path<String>,
+) -> impl IntoResponse {
+    match fleet.list_ships_for_owner(&owner_id) {
+        Ok(list) => (StatusCode::OK, Json(list)).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "failed").into_response(),
+    }
+}
+
+async fn get_ship_handler(
+    AxExtension(fleet): AxExtension<std::sync::Arc<FleetService>>,
+    Path((owner_id, ship_id)): Path<(String, String)>,
+) -> impl IntoResponse {
+    match fleet.get_ship(&owner_id, &ship_id) {
+        Ok(Some(ship)) => (StatusCode::OK, Json(ship)).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, "not found").into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "failed").into_response(),
+    }
+}
+
+async fn update_ship_handler(
+    AxExtension(fleet): AxExtension<std::sync::Arc<FleetService>>,
+    Path((owner_id, ship_id)): Path<(String, String)>,
+    Json(ship): Json<Ship>,
+) -> impl IntoResponse {
+    // ensure path owner/id match payload
+    if ship.owner_id != owner_id || ship.id != ship_id {
+        return (StatusCode::BAD_REQUEST, "mismatched id/owner").into_response();
+    }
+    match fleet.update_ship(ship) {
+        Ok(updated) => (StatusCode::OK, Json(updated)).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "failed").into_response(),
+    }
+}
+
+async fn delete_ship_handler(
+    AxExtension(fleet): AxExtension<std::sync::Arc<FleetService>>,
+    Path((owner_id, ship_id)): Path<(String, String)>,
+) -> impl IntoResponse {
+    match fleet.delete_ship(&owner_id, &ship_id) {
+        Ok(()) => (StatusCode::NO_CONTENT, "").into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "failed").into_response(),
+    }
 }
 
 async fn openapi_handler() -> impl IntoResponse {
