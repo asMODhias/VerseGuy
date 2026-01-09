@@ -51,7 +51,10 @@ fn test_get_organization_after_create() {
         description: "".to_string(),
     };
 
-    let org = match ctx.app_service.create_organization(dto, ctx.user_id.clone()) {
+    let org = match ctx
+        .app_service
+        .create_organization(dto, ctx.user_id.clone())
+    {
         Ok(o) => o,
         Err(_) => panic!("create_organization failed"),
     };
@@ -91,7 +94,10 @@ fn test_add_member_increments_member_count() {
         description: "".to_string(),
     };
 
-    let org = match ctx.app_service.create_organization(dto, ctx.user_id.clone()) {
+    let org = match ctx
+        .app_service
+        .create_organization(dto, ctx.user_id.clone())
+    {
         Ok(o) => o,
         Err(_) => panic!("create_organization failed"),
     };
@@ -122,7 +128,10 @@ fn test_treasury_deposit_withdraw() {
         description: "".to_string(),
     };
 
-    let org = match ctx.app_service.create_organization(dto, ctx.user_id.clone()) {
+    let org = match ctx
+        .app_service
+        .create_organization(dto, ctx.user_id.clone())
+    {
         Ok(o) => o,
         Err(_) => panic!("create_organization failed"),
     };
@@ -147,7 +156,9 @@ fn test_treasury_deposit_withdraw() {
         amount: 500,
         reason: None,
     };
-    let res = ctx.app_service.withdraw_funds(withdraw_ok, ctx.user_id.clone());
+    let res = ctx
+        .app_service
+        .withdraw_funds(withdraw_ok, ctx.user_id.clone());
     assert!(res.is_ok());
     let fetched = match ctx.app_service.get_organization(&org.id) {
         Ok(f) => f,
@@ -173,4 +184,49 @@ fn test_get_nonexistent_org_returns_err() {
 
     let res = ctx.app_service.get_organization("does-not-exist");
     assert!(res.is_err());
+}
+
+#[test]
+fn test_tag_not_unique_allows_create() {
+    let ctx = TestContext::new();
+
+    let dto1 = CreateOrganizationDto {
+        name: "OrgA".to_string(),
+        tag: "TAGX".to_string(),
+        description: "".to_string(),
+    };
+    let dto2 = CreateOrganizationDto {
+        name: "OrgB".to_string(),
+        tag: "TAGX".to_string(), // same tag as OrgA
+        description: "".to_string(),
+    };
+
+    let a = match ctx
+        .app_service
+        .create_organization(dto1, ctx.user_id.clone())
+    {
+        Ok(o) => o,
+        Err(_) => panic!("create_organization failed for OrgA"),
+    };
+
+    let b = match ctx
+        .app_service
+        .create_organization(dto2, ctx.user_id.clone())
+    {
+        Ok(o) => o,
+        Err(_) => panic!("create_organization failed for OrgB"),
+    };
+
+    assert_ne!(a.id, b.id);
+    let fetched_a = match ctx.app_service.get_organization(&a.id) {
+        Ok(f) => f,
+        Err(_) => panic!("get_organization failed for OrgA"),
+    };
+    let fetched_b = match ctx.app_service.get_organization(&b.id) {
+        Ok(f) => f,
+        Err(_) => panic!("get_organization failed for OrgB"),
+    };
+
+    assert_eq!(fetched_a.tag, "TAGX");
+    assert_eq!(fetched_b.tag, "TAGX");
 }
