@@ -14941,10 +14941,10 @@ comment:
 
 Completed:
   ✅ Test infrastructure
-  ✅ Integration tests
-     - Organization (5 tests)
-     - Fleet (2 tests)
-     - Operations (3 tests)
+  ✅ Integration tests (partial)
+     - Organization (7 integration tests; + 11 plugin/unit tests)
+     - Fleet (5 integration tests; + 6 plugin/unit tests)
+     - Operations (2 integration tests)
   ✅ Test utilities
   ✅ Performance benchmarks
   ✅ CI/CD pipeline (GitHub Actions)
@@ -14954,10 +14954,10 @@ Completed:
      - Coverage (80% target)
 
 Test Coverage:
-  Organization: 10 tests
-  Fleet: 4 tests
-  Operations: 5 tests
-  Total: 19 integration tests
+  Organization: 7 integration tests (+11 plugin/unit tests)
+  Fleet: 5 integration tests (+6 plugin/unit tests)
+  Operations: 2 integration tests
+  Total: 14 integration tests (plus plugin/unit tests)
 
 CI Jobs:
   ✅ Test (all features)

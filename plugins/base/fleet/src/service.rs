@@ -95,4 +95,25 @@ impl FleetService {
             .context("Failed to list loadouts")?;
         Ok(out)
     }
+
+    /// Update an existing ship. Returns the updated ship or an error if it doesn't exist.
+    pub fn update_ship(&self, mut ship: Ship) -> Result<Ship> {
+        let existing = self.get_ship(&ship.owner_id, &ship.id)?;
+        if existing.is_none() {
+            anyhow::bail!("Ship not found");
+        }
+        ship.updated_at = Utc::now();
+        self.storage
+            .put(keys::ship(&ship.owner_id, &ship.id), &ship)
+            .context("Failed to update ship")?;
+        Ok(ship)
+    }
+
+    /// Delete a ship owned by `owner_id` with id `ship_id`.
+    pub fn delete_ship(&self, owner_id: &str, ship_id: &str) -> Result<()> {
+        self.storage
+            .delete(keys::ship(owner_id, ship_id))
+            .context("Failed to delete ship")?;
+        Ok(())
+    }
 }

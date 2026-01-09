@@ -139,6 +139,28 @@ impl ApplicationService {
         map.get(id).cloned().ok_or(())
     }
 
+    /// Update fleet name and/or other metadata
+    pub fn update_fleet(&self, id: &str, name: Option<String>, _user: String) -> Result<Fleet, ()> {
+        let mut map = self.fleets.lock().map_err(|_| ())?;
+        if let Some(fleet) = map.get_mut(id) {
+            if let Some(n) = name {
+                fleet.name = n;
+            }
+            return Ok(fleet.clone());
+        }
+        Err(())
+    }
+
+    /// Delete the fleet
+    pub fn delete_fleet(&self, id: &str, _user: String) -> Result<(), ()> {
+        let mut map = self.fleets.lock().map_err(|_| ())?;
+        if map.remove(id).is_some() {
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
     pub fn create_operation(
         &self,
         dto: CreateOperationDto,
