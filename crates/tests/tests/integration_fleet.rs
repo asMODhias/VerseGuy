@@ -32,3 +32,27 @@ fn test_create_fleet() {
     let result = ctx.app_service.create_fleet(dto, ctx.user_id.clone());
     assert!(result.is_ok());
 }
+
+#[test]
+fn test_get_fleet_after_create() {
+    let ctx = TestContext::new();
+
+    let dto = CreateFleetDto {
+        organization_id: "org_1".to_string(),
+        name: "Fleet A".to_string(),
+        description: "".to_string(),
+    };
+
+    let fleet = match ctx.app_service.create_fleet(dto, ctx.user_id.clone()) {
+        Ok(f) => f,
+        Err(_) => panic!("create_fleet failed"),
+    };
+
+    let fetched = ctx.app_service.get_fleet(&fleet.id);
+    assert!(fetched.is_ok());
+    let fetched = match fetched {
+        Ok(f) => f,
+        Err(_) => panic!("get_fleet failed"),
+    };
+    assert_eq!(fetched.name, "Fleet A");
+}

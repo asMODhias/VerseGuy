@@ -39,3 +39,35 @@ fn test_create_operation() {
     let result = ctx.app_service.create_operation(dto, ctx.user_id.clone());
     assert!(result.is_ok());
 }
+
+#[test]
+fn test_start_operation_changes_status() {
+    let ctx = TestContext::new();
+    let start = Utc::now() + Duration::hours(1);
+    let end = start + Duration::hours(2);
+
+    let dto = CreateOperationDto {
+        organization_id: "org_123".to_string(),
+        name: "Op X".to_string(),
+        description: "Test".to_string(),
+        operation_type: "mining".to_string(),
+        scheduled_start: start,
+        scheduled_end: end,
+    };
+
+    let op = match ctx.app_service.create_operation(dto, ctx.user_id.clone()) {
+        Ok(o) => o,
+        Err(_) => panic!("create_operation failed"),
+    };
+
+    let res = ctx
+        .app_service
+        .start_operation(op.id.clone(), ctx.user_id.clone());
+    assert!(res.is_ok());
+
+    let fetched = match ctx.app_service.get_operation(&op.id) {
+        Ok(f) => f,
+        Err(_) => panic!("get_operation failed"),
+    };
+    assert_eq!(fetched.status, "in_progress");
+}

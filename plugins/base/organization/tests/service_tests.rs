@@ -75,3 +75,81 @@ fn test_members_crud() {
 
     // remove member by id not implemented; skip remove test
 }
+
+#[test]
+fn test_duplicate_org_name_is_rejected() {
+    let tmp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(Storage::open(tmp.path()));
+    let svc = OrganizationService::new(storage);
+
+    // First creation should succeed
+    let _ = verseguy_test_utils::must(svc.create_organization(
+        "UniqueOrg".into(),
+        "UO".into(),
+        "desc".into(),
+        "owner".into(),
+    ));
+
+    // Second creation with same name should fail
+    let res = svc.create_organization(
+        "UniqueOrg".into(),
+        "UO2".into(),
+        "d".into(),
+        "owner2".into(),
+    );
+    assert!(res.is_err());
+}
+
+#[test]
+fn test_delete_org_removes_it() {
+    let tmp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(Storage::open(tmp.path()));
+    let svc = OrganizationService::new(storage);
+
+    let org = verseguy_test_utils::must(svc.create_organization(
+        "ToDelete".into(),
+        "TD".into(),
+        "desc".into(),
+        "owner".into(),
+    ));
+
+    // Delete
+    verseguy_test_utils::must(svc.delete_organization(&org.id));
+
+    // Fetch should be None
+    let fetched = verseguy_test_utils::must(svc.get_organization(&org.id));
+    assert!(fetched.is_none());
+}
+
+#[test]
+fn test_list_orgs_prefix_returns_matching() {
+    let tmp = verseguy_test_utils::must(TempDir::new());
+    let storage = verseguy_test_utils::must(Storage::open(tmp.path()));
+    let svc = OrganizationService::new(storage);
+
+    let a = verseguy_test_utils::must(svc.create_organization(
+        "AlphaOne".into(),
+        "A1".into(),
+        "d".into(),
+        "o".into(),
+    ));
+    let b = verseguy_test_utils::must(svc.create_organization(
+        "AlphaTwo".into(),
+        "A2".into(),
+        "d".into(),
+        "o".into(),
+    ));
+    let _c = verseguy_test_utils::must(svc.create_organization(
+        "BetaOne".into(),
+        "B1".into(),
+        "d".into(),
+        "o".into(),
+    ));
+
+    // list with empty prefix returns all organizations; filter by name to verify
+    let results = verseguy_test_utils::must(svc.list_orgs_prefix(""));
+    let names: Vec<String> = results.into_iter().map(|o| o.name).collect();
+    assert!(names.contains(&a.name));
+    assert!(names.contains(&b.name));
+    assert!(names.iter().any(|n| n.starts_with("Beta"))); // BetaOne must be present too
+}
