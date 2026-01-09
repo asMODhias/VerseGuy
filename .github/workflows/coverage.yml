@@ -1,0 +1,67 @@
+name: Coverage
+
+on:
+  pull_request:
+  push:
+    branches: [ 'feat/teil-14-fleet-changelog-2026-01-09' ]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: nightly
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust (nightly)
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential cmake pkg-config libssl-dev clang lld llvm-dev libsnappy-dev liblz4-dev libzstd-dev libbz2-dev libz-dev
+
+      - name: Export RocksDB env
+        run: |
+          echo "CXX=g++" >> $GITHUB_ENV
+          echo "CXXFLAGS=-include cstdint" >> $GITHUB_ENV
+
+      - name: Install llvm tools
+        run: |
+          rustup component add llvm-tools-preview || true
+          sudo apt-get install -y llvm
+
+      - name: Run coverage (HTML)
+        env:
+          RUSTFLAGS: "-Zinstrument-coverage"
+          LLVM_PROFILE_FILE: "${{ github.workspace }}/target/coverage-%p-%m.profraw"
+        run: |
+          cargo +nightly llvm-cov --workspace --html --output-dir target/coverage-html || true
+
+      - name: Upload coverage HTML artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: target/coverage-html
+
+      - name: Comment PR with artifact link
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({ owner: context.repo.owner, repo: context.repo.repo, run_id: context.runId });
+            if (!artifacts.data.artifacts || artifacts.data.artifacts.length === 0) {
+              core.info('No artifacts present')
+              return
+            }
+            const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/suites/${context.runId}/artifacts`;
+            const body = `Coverage HTML artifact for this run is available: ${url}\n\nYou can download the artifact named **coverage-html** from the workflow run's Artifacts tab.`;
+            await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
