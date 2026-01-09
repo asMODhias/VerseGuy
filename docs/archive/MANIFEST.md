@@ -20,3 +20,24 @@ Anmerkungen:
 - Alle archivierten Dateien wurden unverändert nach `docs/archive/` verschoben. Falls eine Datei wiederhergestellt werden soll, kann sie einfach aus dem Archiv zurückgezogen werden.
 - Weitere Kandidaten werden nach Durchsicht ergänzt und in diesem Manifest dokumentiert.
 - Bitte prüfe dieses Manifest und bestätige, ob ich weitere Dateigruppen archivieren oder dauerhaft löschen soll.
+
+---
+## Permanently deleted files
+
+Datum: 2026-01-09
+Commit: a906aa38
+
+Folgende Dateien wurden dauerhaft gelöscht in Commit `a906aa38`:
+
+- `VERSEGUY_ENTERPRISE_GUIDE_TEIL_1-8_DETAILED.md`
+- `VERSEGUY_ENTERPRISE_GUIDE TEIL 1 - 8 DETAILED.md`
+- `VERSEGUY_ENTERPRISE_GUIDE TEIL 1 - 12.md`
+- `VERSEGUY_COMPLETE_IMPLEMENTATION_GUIDE.md`
+- `VERSEGUY_COMPLETE_IMPLEMENTATION_GUIDE (4).md`
+- `VERSEGUY_COPILOT_COMPLETE.md`
+- `tmp_verseguy_pr_body.md`
+- `tmp_rcgen_pr_body.md`
+- `TEIL-2-IMPLEMENTATION-START.md`
+- `TEIL-1-IMPLEMENTATION-REPORT.md`
+
+Hinweis: Die Dateien sind weiterhin in der Git-Historie (Commit `a906aa38`).
