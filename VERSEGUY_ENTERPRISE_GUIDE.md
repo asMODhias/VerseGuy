@@ -14943,7 +14943,7 @@ Completed:
   ✅ Test infrastructure
   ✅ Integration tests (partial)
      - Organization (7 integration tests; + 11 plugin/unit tests)
-     - Fleet (2 integration tests)
+     - Fleet (5 integration tests; + 6 plugin/unit tests)
      - Operations (2 integration tests)
   ✅ Test utilities
   ✅ Performance benchmarks
@@ -14955,9 +14955,9 @@ Completed:
 
 Test Coverage:
   Organization: 7 integration tests (+11 plugin/unit tests)
-  Fleet: 2 integration tests
+  Fleet: 5 integration tests (+6 plugin/unit tests)
   Operations: 2 integration tests
-  Total: 11 integration tests (plus plugin/unit tests)
+  Total: 14 integration tests (plus plugin/unit tests)
 
 CI Jobs:
   ✅ Test (all features)
